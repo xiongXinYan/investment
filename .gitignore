@@ -1,0 +1,17 @@
+# 内部工作目录（会话状态、记忆文件），不属于策略内容
+.workbuddy/
+
+# 与本项目无关的软件日志
+Typora_Hook_Log.txt
+
+# 临时构建产物
+_tmp_*.js
+_chk*.js
+_s*.js
+_c*.js
+_v*.js
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini

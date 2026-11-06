@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交易策略审计报告 · 投资策略规划 v1.0</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --ink:#16181d; --sub:#5b6270; --mute:#8b919c;
+    --line:#e5e3dd; --bg:#f7f6f3; --card:#ffffff;
+    --teal:#1f4e5f; --teal2:#2f7189;
+    --red:#b3392e; --redbg:#fdf3f1;
+    --amber:#a8761a; --amberbg:#fdf8ee;
+    --green:#2c6e52; --greenbg:#f1f7f3;
+    --bluebg:#f0f5f7;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 28px 100px;}
+
+  /* header */
+  header{border-bottom:1px solid var(--line); padding:56px 0 28px; margin-bottom:36px;}
+  .kicker{font-size:12px; letter-spacing:.18em; color:var(--teal); text-transform:uppercase; font-weight:600; margin-bottom:14px;}
+  h1{font-size:33px; line-height:1.3; margin:0 0 14px; letter-spacing:-.5px; font-weight:700;}
+  .lede{font-size:16px; color:var(--sub); max-width:760px; margin:0 0 22px;}
+  .meta{display:flex; flex-wrap:wrap; gap:22px; font-size:12.5px; color:var(--mute);}
+  .meta b{color:var(--ink); font-weight:600;}
+
+  /* verdict cards */
+  .cards{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:0 0 34px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:6px; padding:18px 18px 16px;}
+  .card .lab{font-size:11.5px; color:var(--mute); letter-spacing:.06em; margin-bottom:9px;}
+  .card .val{font-size:25px; font-weight:700; line-height:1.2; letter-spacing:-.5px;}
+  .card .note{font-size:12px; color:var(--sub); margin-top:7px; line-height:1.5;}
+  .v-red{color:var(--red);} .v-teal{color:var(--teal);} .v-amber{color:var(--amber);}
+
+  /* typography */
+  h2{font-size:22px; margin:52px 0 6px; font-weight:700; letter-spacing:-.3px;
+     padding-top:22px; border-top:2px solid var(--ink); display:inline-block; width:100%;}
+  h2 .num{color:var(--mute); font-weight:500; margin-right:10px; font-variant-numeric:tabular-nums;}
+  h3{font-size:16.5px; margin:32px 0 10px; font-weight:700;}
+  h4{font-size:14.5px; margin:22px 0 6px; font-weight:700; color:var(--teal);}
+  p{margin:10px 0;}
+  .sub{color:var(--sub);}
+  small{font-size:12px; color:var(--mute); line-height:1.6;}
+
+  /* callouts */
+  .box{border-radius:6px; padding:18px 22px; margin:20px 0; border:1px solid;}
+  .box p:first-child{margin-top:0;} .box p:last-child{margin-bottom:0;}
+  .box-red{background:var(--redbg); border-color:#f0d6d1;}
+  .box-amber{background:var(--amberbg); border-color:#f0e2c4;}
+  .box-green{background:var(--greenbg); border-color:#d5e6dc;}
+  .box-blue{background:var(--bluebg); border-color:#d9e3e8;}
+  .box .t{font-weight:700; margin-bottom:8px; display:block; font-size:14.5px;}
+  .box-red .t{color:var(--red);} .box-amber .t{color:var(--amber);}
+  .box-green .t{color:var(--green);} .box-blue .t{color:var(--teal);}
+
+  /* tables */
+  .tw{overflow-x:auto; margin:18px 0 8px;}
+  table{width:100%; border-collapse:collapse; font-size:13px; background:var(--card);}
+  th{background:#f0efeb; font-weight:600; text-align:left; padding:10px 12px;
+     border-bottom:1px solid var(--line); font-size:12.5px; color:var(--ink); white-space:nowrap;}
+  td{padding:9px 12px; border-bottom:1px solid #efede8; vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  td.n, th.n{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .hl{background:#fdf6ec;}
+  .bad{color:var(--red); font-weight:600;}
+  .good{color:var(--green); font-weight:600;}
+  .dim{color:var(--mute);}
+  .src{margin-top:10px; font-size:11.5px; color:var(--mute); line-height:1.65;}
+
+  /* formula */
+  .formula{background:#1f242b; color:#e8e6e1; border-radius:6px; padding:16px 22px; margin:18px 0;
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:13.5px; line-height:1.9;
+    overflow-x:auto;}
+  .formula em{color:#9fd3c7; font-style:normal;}
+  .formula .c{color:#8b919c;}
+
+  /* chart */
+  .chartcard{background:var(--card); border:1px solid var(--line); border-radius:6px; padding:20px 16px 8px; margin:20px 0;}
+  .chartcard .ct{font-size:13.5px; font-weight:700; padding:0 8px 4px;}
+  .chartcard .cs{font-size:11.5px; color:var(--mute); padding:0 8px 12px;}
+
+  /* lists */
+  ul,ol{margin:10px 0; padding-left:22px;}
+  li{margin:6px 0;}
+  .tight li{margin:3px 0;}
+
+  .tag{display:inline-block; font-size:11px; padding:1px 7px; border-radius:3px; font-weight:600;
+       vertical-align:1px; margin-right:6px;}
+  .tag-r{background:#f7e3df; color:var(--red);}
+  .tag-a{background:#f8eed6; color:var(--amber);}
+  .tag-g{background:#e0efe7; color:var(--green);}
+  .tag-b{background:#e2edf2; color:var(--teal);}
+
+  .disc{margin-top:56px; padding-top:22px; border-top:1px solid var(--line); font-size:12px; color:var(--sub);}
+
+  @media(max-width:860px){
+    .cards{grid-template-columns:repeat(2,1fr);}
+    h1{font-size:26px;} .wrap{padding:0 18px 70px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Strategy Audit · 策略审计</div>
+  <h1>一份结构严谨、但数学上无法执行的多阶段抄底策略</h1>
+  <p class="lede">对《投资策略规划 v1.0》的逐条压力测试。结论不是"写得不好"——恰恰相反，它的纪律设计优于绝大多数个人方案。问题在于：<b>它的仓位阶梯和它的风险预算互相否决，按今天的市场数据执行，它会要求你保持满仓现金。</b></p>
+  <div class="meta">
+    <span>审计对象：<b>投资策略规划 v1.0</b></span>
+    <span>数据截止：<b>2026-11-05 收盘</b></span>
+    <span>报告日：<b>2026-11-06</b></span>
+    <span>结论：<b>保留框架，重设仓位与退出参数</b></span>
+  </div>
+</header>
+
+<div class="cards">
+  <div class="card">
+    <div class="lab">框架质量</div>
+    <div class="val v-teal">优于八成</div>
+    <div class="note">纪律、记账、优先级、边界声明都到位</div>
+  </div>
+  <div class="card">
+    <div class="lab">一票否决级问题</div>
+    <div class="val v-red">2 个</div>
+    <div class="note">风险预算与仓位表互否；退出阈值低于日常噪声</div>
+  </div>
+  <div class="card">
+    <div class="lab">按 v1.0 今天的指令</div>
+    <div class="val v-red">100% 现金</div>
+    <div class="note">指数已跌 18.8%，但 PE 分位 60% 卡死所有买点</div>
+  </div>
+  <div class="card">
+    <div class="lab">v1.1 建议权益上限</div>
+    <div class="val v-teal">62%</div>
+    <div class="note">原表 90% 隐含回撤约 46%，与"能扛 25-30%"差 16pp</div>
+  </div>
+</div>
+
+<div class="box box-blue">
+  <span class="t">一句话结论</span>
+  <p>这份文档把"怎么想"写对了，但把"买多少"写错了。它的仓位阶梯（35→50→65→80→90）真实隐含的最大回撤约 <b>46%</b>，而它自己声明只承受 <b>25-30%</b>；同时它的移动退出阈值（回落 8%）相当于 0.4 倍年化波动，属于噪声级别，会在正常震荡中把仓位洗掉。修好这两处，再补上「核心账／机动账」分账和「债性资产」两块缺口，这套方法才有实盘价值。</p>
+</div>
+
+<h2><span class="num">01</span>先说它做对了什么</h2>
+
+<p>审计要先确认哪些不能动。以下六点是这份文档真正的价值，任何优化都不应破坏：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:22%">设计</th><th>为什么是对的</th></tr></thead>
+<tbody>
+<tr><td><b>生活资金与投资资金硬隔离</b></td><td>策略失效最常见的真实原因不是选错股，是中途要用钱。这条防线比任何择时信号都重要。</td></tr>
+<tr><td><b>止盈按"每批自己含费成本"算</b></td><td>文档 6.1 明确否定"指数从低点反弹 20% 就卖"这个常见错误。<b>大部分散户方案在这里就错了</b>，它没有。</td></tr>
+<tr><td><b>按批次编号记账</b></td><td>把"一个组合"拆成"N 个可独立结算的批次"，是让规则可执行、可复盘的前提。券商汇总成本做不到这件事。</td></tr>
+<tr><td><b>卖出优先级高于买入</b></td><td>7.1 的顺序（退出 &gt; 风控 &gt; 加减仓 &gt; 新买入）在冲突时给出了唯一解，避免"又买又卖"。</td></tr>
+<tr><td><b>收盘确认 + 下一交易时段执行</b></td><td>砍掉了盘中情绪化下单，这一条单独就能提升长期收益。</td></tr>
+<tr><td><b>主动写出代价</b></td><td>"可能跑输满仓""卖出后可能继续涨""可能在低位减仓"——愿意把负面结果写进文档，说明作者不是在做营销。</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>所以下面的批评都建立在"这套东西值得救"的前提下。要改的不是思路，是参数和结构。</p>
+
+<h2><span class="num">02</span>把 v1.0 放到今天的市场上跑一遍</h2>
+
+<p>规则的价值只有在具体数据上才能被检验。取 2026-11-05 收盘的真实数据，按 v1.0 第四节的口径逐条代入：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:16%">指标</th><th style="width:26%">v1.0 的计算口径</th><th style="width:22%">2026-11-05 实测</th><th>结论</th></tr></thead>
+<tbody>
+<tr>
+  <td><b>市场回撤 D</b></td>
+  <td>1 − 当日收盘 ÷ 最近 252 日最高收盘</td>
+  <td>4113.32 ÷ 5064.27<br><b>D = 18.8%</b><br><span class="dim">（10/30 收盘 3985.50 时 D = 21.3%）</span></td>
+  <td class="good">满足 S1 的 D≥15%</td>
+</tr>
+<tr class="hl">
+  <td><b>估值分位 P</b></td>
+  <td>沪深300 PE-TTM 近 10 年分位</td>
+  <td>PE-TTM 13.59 倍<br><b>分位 约 60%</b><br><span class="dim">Wind 口径；天风 52%、iFind 69%</span></td>
+  <td class="bad">不满足 P≤40%</td>
+</tr>
+<tr>
+  <td>PB 分位<br><span class="dim">（文档未用）</span></td>
+  <td>—</td>
+  <td>PB 1.339 倍，<b>分位 23%–35%</b></td>
+  <td class="good">偏低</td>
+</tr>
+<tr>
+  <td>ERP 分位<br><span class="dim">（文档未用）</span></td>
+  <td>—</td>
+  <td>ERP 5.78%–6.25%<br><b>分位 72%–83%</b></td>
+  <td class="good">股票相对债券极便宜</td>
+</tr>
+<tr>
+  <td>股息率−国债<br><span class="dim">（文档未用）</span></td>
+  <td>—</td>
+  <td>2.79% vs 1.593%<br><b>利差分位 97%</b>（2007 年以来）</td>
+  <td class="good">历史极值区</td>
+</tr>
+<tr>
+  <td><b>最后一步</b></td>
+  <td>4.1 平时建仓门槛 P≤50%</td>
+  <td>P = 60%</td>
+  <td class="bad">连平时仓位都不许建</td>
+</tr>
+</tbody>
+</table>
+<div class="src">数据来源：沪深300 点位／PE／PB／股息率来自 westock-data、neodata 统一估值查询（2026-11-05 收盘）；PE 十年分位来自 Wind 口径转述（华泰柏瑞，2026-11-03）；PB 十年分位 23%（天风期货，2026-11-03）、五年分位 35.5%（neodata，2026-11-05）；ERP 与股息率利差分位来自华泰柏瑞、iFind、天风期货转述；10 年期国债收益率 1.593%（2026-11-05 收盘）。分位口径与样本区间各家不同，已分别标注，不作为精确值使用。</div>
+</div>
+
+<div class="box box-red">
+  <span class="t">这就是问题所在：一个"低位布局"策略，在跌了 18.8% 的时候要求你 100% 空仓</span>
+  <p>按 v1.0，今天你既不能建平时仓（P≤50% 不满足），也不能进 S1（P≤40% 不满足）。而同一时点，<b>PB 分位 23-35%、ERP 分位 72-83%、股息率高出 10 年期国债 120bp 且处 97% 分位</b>——三个独立口径同时说"相对债券极便宜"。只有 PE 分位一个指标说"只是中位"。</p>
+  <p style="margin-top:10px">单看某一个指标无法解释这个矛盾。真正的原因是：<b>PE 分位的分母在漂移。</b>近十年前的 2016-2018 高估值段已经滚出窗口，而 2022-2024 那段 PE 只有 10-11 倍的极低估值段还留在窗口里。于是同样是 13.6 倍的 PE，2024 年读作"5% 分位"，2026 年读作"60% 分位"。<b>用固定分位阈值判定"够不够便宜"，在估值中枢下移的市场里会系统性失灵</b>——指数跌了 19%，而它告诉你"还早"。</p>
+</div>
+
+<div class="chartcard">
+  <div class="ct">当前估值的三维分位与 v1.0 的单一门槛</div>
+  <div class="cs">柱高为各指标的历史分位（分位越高越便宜或越贵需分别看，此处仅示位置）；虚线为 v1.0 要求的 P≤40%</div>
+  <div id="chart2" style="width:100%;height:300px;"></div>
+</div>
+
+<p><small>读法：PE 分位 60% 是四个口径里唯一"不够便宜"的读数，而它恰好是 v1.0 唯一采用的指标。这不是巧合——PE 是最容易被盈利周期和利率中枢扭曲的估值指标，也是滚动窗口下漂移最厉害的。</small></p>
+
+<h2><span class="num">03</span>五个会让它在实盘失效的硬伤</h2>
+
+<h3>3.1 <span class="tag tag-r">一票否决</span>仓位阶梯与风险预算互相否决</h3>
+
+<p>这是全文最严重的问题，而且它藏在两节之间、单独看每一节都看不出矛盾。</p>
+
+<p>文档 3.x 给出仓位阶梯：<b>35% → 50% → 65% → 80% → 90%</b>。<br>
+文档 7.2 给出压力假设：红利 −25%、沪深300 −30%、中证500 −35%、科创50 与行业ETF 各 −40%（加权后权益端约 <b>31-32%</b>）。<br>
+文档 7.4 给出风控线：账户回撤达到 R 时，权益上限压到 20%。<br>
+文档 2.2 声明：进取版"能承受账户 25-30% 甚至更大亏损"。</p>
+
+<p>把这四条放在一起算：要走到 S3，市场必须先跌 35%。而在跌这 35% 的过程中，你手上已经有 65% 的权益仓位在跟着跌。</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>路径</th><th class="n">D=15% 时<br>已实现回撤</th><th class="n">D=25%</th><th class="n">D=35%</th><th class="n">D=45% 后<br>再跌 32%</th><th class="n">隐含<br>最大回撤</th></tr></thead>
+<tbody>
+<tr><td>v1.0 起步版（上限 65%）</td><td class="n">5.3%</td><td class="n">10.3%</td><td class="n">16.8%</td><td class="n">17.3%</td><td class="n bad">≈34%</td></tr>
+<tr><td>v1.0 进取版（上限 90%）</td><td class="n">5.3%</td><td class="n">10.3%</td><td class="n">16.8%</td><td class="n">21.7%</td><td class="n bad">≈46%</td></tr>
+<tr><td>v1.0 声明可承受</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">—</td><td class="n">25–30%</td></tr>
+</tbody>
+</table>
+<div class="src">计算：分段累加"当段权益权重 × 该段市场跌幅 + 到达最高档后按 7.2 假设再跌一次"，权益端加权跌幅取 32%。这是与文档 7.2 同口径的算术，不是新模型。</div>
+</div>
+
+<p>也就是说：<b>执行到 S4，隐含回撤约 46%，比它自己说的 25-30% 高出 16 个百分点。</b>更要紧的是，按 7.4 的规则，账户回撤触及 R（比如 20%）时就要把权益压到 20%——那么在你还没走到 S3 的时候，风控就已经强制你清仓了。<b>S3 的 80% 和 S4 的 90% 从来没有机会被执行，它们是纸上的数字。</b></p>
+
+<div class="box box-amber">
+  <span class="t">这里有一个必须直面的逻辑冲突</span>
+  <p>"固定最大回撤预算"和"越跌越买"在数学上<b>不能同时成立</b>。市场跌得越多，你的可用预算越少；而加仓要花的正是这份预算。文档 11.4 隐约意识到了（"可能需要在低位减仓"），但 3.x 的仓位表仍然写着 35→90 的加仓阶梯，两处没有对齐。</p>
+  <p style="margin-top:10px">所以优化的第一步不是调参数，是<b>二选一</b>：要么接受"越跌越降仓"（那就是风险平价，不是抄底）；要么明确把 R 提到 35% 左右，并把平时仓位压低，给底部留出真实空间。下面的 v1.1 走的是第二条路。</p>
+</div>
+
+<div class="chartcard">
+  <div class="ct">同一份风险预算下，允许的权益上限完全不同</div>
+  <div class="cs">横轴为市场阶段；纵轴为权益占投资账户净值上限。v1.0 原表在任何 R 下都无法自洽</div>
+  <div id="chart1" style="width:100%;height:380px;"></div>
+</div>
+
+<p><small>说明：R=20%/25% 两条线由公式 w ≤ (R − d) ÷ [(1 − d) × s] 逐段反推，d 为已实现账户回撤、s=32% 为权益端进一步下跌假设。可以看到一条反直觉但正确的结论：<b>R=20% 时，S1 之后仓位必须逐级下降</b>，因为预算已经被前面的下跌消耗掉了。</small></p>
+
+<h3>3.2 <span class="tag tag-r">一票否决</span>移动退出阈值低于日常噪声</h3>
+
+<p>6.3 规定：红利与沪深300 从最高收盘价值回落 <b>8%</b> 就退出剩余机动仓。这个数字太小了。</p>
+
+<p>沪深300 近年年化波动率大致在 20% 上下（中证500 近一年波动率 27.2%，数据见下）。<b>8% 约等于 0.4 倍年化波动率</b>——按日均 1% 出头的波动，连续 6-8 个普通下跌日就能完成。它不是趋势信号，是噪声。</p>
+
+<p>后果是可计算的：一个批次在 12% 触发第一档卖出后，还有 75% 的份额挂着 8% 的移动止损。在随后任何一次正常回调中，这 75% 会被清在 +3% 到 +6% 的位置。整个"12/20/28 分批止盈"的设计意图——让大部分仓位在 20% 附近兑现——会被这条止损提前打断，<b>实际实现收益远低于设计的 20% 期望值</b>。</p>
+
+<div class="box box-green">
+  <span class="t">改法：阈值应当由波动率决定，而不是拍一个整数</span>
+  <p>建议改为 <b>0.9–1.0 倍年化波动率</b>，并做成两段式，兼顾保护与容错：</p>
+  <p style="margin-top:8px">红利／沪深300 → <b>15%</b>；中证500 → <b>18%</b>；科创50／行业ETF → <b>22%</b>。<br>
+  回落至 1× 阈值：卖出剩余份额的 50%；回落至 1.5× 阈值：清完剩余。</p>
+  <p style="margin-top:8px"><small>这不降低保护强度——因为固定止盈已在 12% 卖出 25%、20% 卖出 75%，移动退出保护的只是最后那 25% 的仓位；为这部分仓位设 8% 的紧止损，代价远大于收益。</small></p>
+</div>
+
+<h3>3.3 <span class="tag tag-a">结构性</span>时间退出的尺度把长期资金做成了 1.5 年封闭产品</h3>
+
+<p>6.5 的规定是：252 日不达 12% 且收益 ≤0 → 减半；378 日 → 清仓。378 个交易日约 1.5 年。</p>
+
+<p>A 股熊市的平均持续时间通常以年计（2001-2005、2011-2014、2021-2024 都在三年以上）。一个从 S2/S3 买入的批次，1 年到 1.5 年正好是最容易被强平在底部区域的时点。<b>这条规则的初衷（防止机动仓无限拖成被动长期仓）是合理的，但用日历期限来实现，会在均值回归真正发生之前把你踢出去。</b></p>
+
+<p>更根本的矛盾是：文档 2.1 说这笔钱是"至少 5 年无刚性使用需求"的，而 6.5 却给同一笔钱设了 1.5 年的强制退出。<b>资金期限和退出期限不匹配。</b></p>
+
+<div class="box box-amber">
+  <span class="t">改法：把"日历"换成"条件"</span>
+  <p>252 日 → 仅做书面复核（写清楚逻辑是否仍成立），不强制卖出。<br>
+  504 日（约 2 年）<b>且</b>该批收益 ≤0 <b>且</b>估值分位未较买入时改善 → 减半。<br>
+  756 日（约 3 年）→ 退出剩余，做完整复盘。</p>
+  <p style="margin-top:8px">同时把长期资金从这套规则里摘出去——见 3.6 的"分账"方案。</p>
+</div>
+
+<h3>3.4 <span class="tag tag-a">结构性</span>用沪深300 一个指数定义全市场的"低位"</h3>
+
+<p>文档 4.1 用沪深300 的回撤 D 和 PE 分位 P 判定阶段，然后把这个阶段同时套用到红利、中证500、科创50 和行业ETF 上。但各类资产的跌幅差异是巨大的。当前就是活例子：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>指数</th><th class="n">本轮高点</th><th class="n">近期低点</th><th class="n">回撤</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>沪深300</td><td class="n">5064.27<br><span class="dim">（52周高）</span></td><td class="n">3985.50<br><span class="dim">2026-10-30 收盘</span></td><td class="n">−21.3%</td><td>判定为"接近 S1"</td></tr>
+<tr><td>中证500</td><td class="n">9147.56<br><span class="dim">2026-07-01</span></td><td class="n">6253.79<br><span class="dim">2026-11-02</span></td><td class="n bad">−31.6%</td><td>已超过 S2 门槛，但拿不到 S2 的额度</td></tr>
+</tbody>
+</table>
+<div class="src">数据来源：沪深300 52 周高低点来自 westock-data（2026-11-05）；中证500 高低点与近一年最大回撤 −30.62% 来自公开行情汇总（2026-11-05）。</div>
+</div>
+
+<p>中证500 比沪深300 多跌了 10 个百分点，但按文档的统一判定，它只能拿到 S1 的 8% 额度。这意味着：<b>越是跌得多的资产，越拿不到加仓额度</b>——恰好和"低位多买"的初衷相反。</p>
+
+<p>改法：<b>每个资产类别用自己指数的回撤定义加仓档</b>，总仓位仍由组合层面的风险预算约束。即"阶段看自己，额度看总账"。</p>
+
+<h3>3.5 <span class="tag tag-a">假设不成立</span>中证500增强的超额，可能撑不起它承担的角色</h3>
+
+<p>文档 3.1 把中证500增强定位为"中盘股暴露及潜在超额收益"，并给了 5%→20% 的权重。过去三年的公开数据不支持这个假设的稳定性：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:34%">观察</th><th>数据</th></tr></thead>
+<tbody>
+<tr><td>公募500增强近三年超额水平</td><td>2025 年超额收益均值 <b>+2.1%</b>、中位数 <b>+1.60%</b>；在沪深300（2.72%）、中证500（1.60%）、中证1000（7.22%）三个宽基里<b>排名靠后</b></td></tr>
+<tr><td>超额稳定性</td><td>2025 年超额榜前五（中欧、鹏华、长城、华泰柏瑞、万家）与 <b>2026 年前三季度</b>前五（广发、易方达、光大、申万菱信、万家）<b>几乎完全更替</b>——按历史榜单选基的持续性很弱</td></tr>
+<tr><td>下行保护</td><td>2026Q3 中证500 指数跌 16.8% 时，多数产品仍跌 12-13%，"少跌 3-4 个百分点"，<b>绝对回撤基本无法回避</b></td></tr>
+<tr><td>超额本身的回撤</td><td>2025/8/11–9/30 因基本面因子失效，全市场500增强超额均值 <b>−1.31%</b>，一次回撤回吐相当部分累积超额</td></tr>
+</tbody>
+</table>
+<div class="src">来源：开源证券金工、Wind／省心研究院、晨星、基金季报转述（2025-12-31 至 2026-10-29 各期）。均为非一手来源的汇总数据，具体以基金定期报告为准。</div>
+</div>
+
+<p>结论不是"不能配"，而是<b>不该给它 20% 的额度并当作稳定超额来源</b>。一个超额中位数 1.6%、榜单年年换血、下跌时照跌的品种，在组合里的合理角色是"可选卫星仓"，不是"次主力"。建议：额度砍半，且其中一半用低费率的中证500 ETF 替代——把"选对管理人"这个额外赌注拿掉。</p>
+
+<h2><span class="num">04</span>五个结构性缺口</h2>
+
+<h4>缺口一：60% 以上的现金，收益几乎为零</h4>
+<p>文档 8.1 的现金管理原则（可用性 &gt; 收益）是对的，但在当前利率环境下代价被低估了：1 年期国债 1.173%、5 年期 1.316%、10 年期 1.593%。货币基金大致在 1.2-1.5%。<b>65% 的现金一年只贡献约 0.8% 的组合收益。</b>若把其中 30-40% 换成久期 ≤3 年的短债／存单指数，carry 能提到 2% 附近，一年多为组合贡献 0.3-0.5pp——相当于把权益仓位凭空提高了 5-8 个百分点，且不增加股市风险。</p>
+
+<h4>缺口二：没有债性资产，等于放弃了危机中的"再平衡弹药"</h4>
+<p>整个组合只有"权益 + 现金"两类。股债之间长期存在弱负相关的再平衡收益，而这份文档把现金当作纯粹的等待工具，没有把它当作一类可配置资产。（需要注意：2022 年与 2025 年均出现过股债同跌，不能假设负相关永远成立。）</p>
+
+<h4>缺口三：只有向下再平衡，没有向上再平衡</h4>
+<p>3.x 规定"不得因持仓下跌、占比变小而自动补回"，3.1 规定"上涨超上限 2pp 减回"。两者合起来是<b>单边再平衡：只减不补</b>。在长期上行市场里，这会让权益仓位持续萎缩，最后变成一个渐渐失效的策略。合理的修法是给"核心账"设固定目标权重并按季再平衡，让长期暴露不被周期规则侵蚀。</p>
+
+<h4>缺口四：S0 阶段的机动仓没有规则</h4>
+<p>3.2 定义"机动仓 = 核心仓之外的权益部分，按第六节退出"。但 5.2 的加仓预算只从 S0→S1 开始给。那么在 S0 阶段，35% 与 20% 核心仓之间的那 15%，属于机动仓，却没有买入预算、没有档位、也不属于任何一轮周期——它却要执行 12/20/28 止盈。<b>结果是：在常态市场里会有一笔 15% 的仓位反复进出，同时触发 5.3 第 4 条"本轮不再加这类资产"，把这一轮提前锁死。</b></p>
+
+<h4>缺口五：没有"策略值得做吗"的门槛</h4>
+<p>文档第十一节做了验证设计，但没有写出<b>及格线</b>。假设权益长期含分红年化 6-8%、现金 1.2%（这是假设，不是预测），固定 35/65 的预期年化约 <b>3.2%</b>。这套策略要证明自己有价值，需要每年跑赢这个基准 3pp 以上——十年下来是 34% 的复利差。<b>把及格线写进文档，比多写十条规则更重要</b>，否则你永远不知道自己在坚持一个有效策略还是一个习惯。</p>
+
+<h2><span class="num">05</span>优化方案 v1.1：改什么，怎么改</h2>
+
+<p>下面所有改动都遵守一个原则：<b>不改变你对市场的判断方式，只改变仓位、退出和时间尺度。</b>判断方式（回撤+估值+广度）本身没问题，有问题的是它被折算成仓位的那一步。</p>
+
+<h3>5.1 资金结构：三分账，这是最重要的改动</h3>
+
+<p>把"所有资金都执行周期策略"改为三个账户，各自有独立的规则、独立的期限、独立的风险预算：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:14%">账户</th><th class="n" style="width:12%">占投资资金</th><th style="width:36%">规则</th><th>解决什么问题</th></tr></thead>
+<tbody>
+<tr>
+  <td><b>核心账</b></td><td class="n">约 22%<br><span class="dim">（权益，恒定）</span></td>
+  <td>沪深300 与红利各半，按季定额投入；<b>季度末再平衡回目标权重</b>；仅在 PE 与 PB 分位<b>同时</b> ≥85% 时减半一次。<b>永不被 12/20/28 止盈，也永不执行 6.5 的时间退出。</b></td>
+  <td>长期牛市仓位只减不补（缺口三）；1.5 年强平长期资金（3.3）</td>
+</tr>
+<tr>
+  <td><b>机动账</b></td><td class="n">0–40%<br><span class="dim">（权益，按阶段）</span></td>
+  <td>v1.0 的全部 S0–S4 加仓、12/20/28 止盈、移动退出、时间退出，<b>只作用于这部分</b>。S0 阶段为 0。</td>
+  <td>S0 机动仓无规则（缺口四）；择时失效时的损失边界</td>
+</tr>
+<tr>
+  <td><b>缓冲账</b></td><td class="n">38–78%</td>
+  <td>其中 30-40% 配久期 ≤3 年短债／存单指数，其余货基与国债逆回购；全部 T+1 可用。</td>
+  <td>现金收益接近于零（缺口一）；无债性资产（缺口二）</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="box box-blue">
+  <span class="t">这个结构带来的第一个变化：总权益上限从 90% 降到 62%</span>
+  <p>核心 22% 恒定 + 机动最高 40% = <b>总权益 62%</b>。按 7.2 的同一套压力假设，这个结构的隐含最大回撤约 <b>28%</b>——<b>正好落在文档 2.2 为进取版声明的"25-30%"区间内</b>。也就是说，v1.1 第一次让"仓位"和"风险声明"对上了。</p>
+  <p style="margin-top:8px"><small>如果你更看重长期复利，核心账可取 25%，各档同步 +3pp，隐含回撤约 30%，仍在可声明范围内。</small></p>
+</div>
+
+<h3>5.2 阶段判定：把"AND 门"换成"打分制"</h3>
+
+<p>v1.0 的 S1 要求 D≥15% <b>且</b> P≤40% <b>且</b> 连续 3 日。三个独立条件取交集，任何一项失灵就整体失灵——今天就是 P 这一项把整个策略卡死。改为四维打分，取<b>总分</b>：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:22%">维度</th><th class="n">0 分</th><th class="n">1 分</th><th class="n">2 分</th><th class="n">今日读数</th></tr></thead>
+<tbody>
+<tr><td>回撤 D（沪深300）</td><td class="n">&lt;10%</td><td class="n">10–20%</td><td class="n">≥20%</td><td class="n">1 分 <span class="dim">(18.8%)</span></td></tr>
+<tr><td>PE 分位</td><td class="n">&gt;60%</td><td class="n">40–60%</td><td class="n">≤40%</td><td class="n">1 分 <span class="dim">(60%)</span></td></tr>
+<tr><td>PB 分位</td><td class="n">&gt;50%</td><td class="n">30–50%</td><td class="n">≤30%</td><td class="n">1–2 分 <span class="dim">(23–35%)</span></td></tr>
+<tr><td>ERP 分位<br><span class="dim">或 股息率−国债利差分位</span></td><td class="n">&lt;50%</td><td class="n">50–75%</td><td class="n">≥75%</td><td class="n">2 分 <span class="dim">(72–83%)</span></td></tr>
+<tr class="hl"><td><b>今日总分</b></td><td colspan="3" class="dim">—</td><td class="n"><b>5–6 分 → S1</b></td></tr>
+</tbody>
+</table>
+<div class="src">阈值：总分 ≥4 进 S1，≥6 进 S2，≥7 加广度条件进 S3，≥5 且企稳进 S4。仍需连续 3 日收盘确认（这一条保留，它是有效的抗噪设计）。</div>
+</div>
+
+<p>打分制的两个实际好处：<b>（1）单一指标失灵时不会整体卡死</b>——PE 分位漂到 60% 时，PB 和 ERP 仍能把它推进 S1；<b>（2）它强迫你把"便宜"拆成多个独立证据</b>，而不是押在一个最容易被盈利周期和利率中枢扭曲的指标上。</p>
+
+<div class="box box-amber">
+  <span class="t">必须说清楚的一个反面：ERP 现在的高分位，有一部分是"假便宜"</span>
+  <p>ERP = 盈利收益率 − 10 年期国债收益率。当前 10 年期国债 1.593%，处在近 5400 个交易日样本的约 <b>0.4% 分位</b>——极低。分母塌了，ERP 自然显得高。如果中国长期利率中枢就此停在 1.5% 附近，那么 ERP 的历史分位本身就失去了部分参考意义。</p>
+  <p style="margin-top:8px">所以打分表里 <b>PB 应当权重更高</b>（PB 不受利率影响，也不受盈利周期同等扭曲），ERP 只作为辅助证据。这也是为什么上面给了 PB 1–2 分而不是直接 2 分。</p>
+</div>
+
+<h3>5.3 仓位：由剩余风险预算反推，而不是查固定阶梯</h3>
+
+<p>删掉 35/50/65/80/90 这张表，改为一个公式 + 一张查表。公式与文档 7.2 的简化校验同源，但修正了两处：把"市场回撤"换成"账户已实现回撤"，并避免重复计算。</p>
+
+<div class="formula">
+  可用权益上限 <em>w</em> = ( <em>R</em> − <em>d</em> ) ÷ [ ( 1 − <em>d</em> ) × <em>s</em> ]<br>
+  <span class="c">R</span> = 你书面承诺的最大回撤（建议起步 20%，进取 30-35%）<br>
+  <span class="c">d</span> = 当前已实现账户回撤（不是市场回撤）<br>
+  <span class="c">s</span> = 权益端进一步下跌假设（按 7.2 加权 ≈ 32%；企稳后可降至 20%）<br>
+  <span class="c">约束</span>：取 min(公式值, 阶段上限 62%, 单项集中度上限)
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>阶段</th><th class="n">核心账</th><th class="n">机动账</th><th class="n">总权益上限</th><th class="n">已实现回撤 d</th><th class="n">校验：再加压 32%</th><th class="n">合计</th></tr></thead>
+<tbody>
+<tr><td>S0 平时</td><td class="n">22%</td><td class="n">0%</td><td class="n"><b>22%</b></td><td class="n">0.0%</td><td class="n">7.0%</td><td class="n good">7.0%</td></tr>
+<tr><td>S1 D≥15%</td><td class="n">22%</td><td class="n">15%</td><td class="n"><b>37%</b></td><td class="n">3.3%</td><td class="n">11.5%</td><td class="n good">14.8%</td></tr>
+<tr><td>S2 D≥25%</td><td class="n">22%</td><td class="n">30%</td><td class="n"><b>52%</b></td><td class="n">6.3%</td><td class="n">15.6%</td><td class="n good">21.9%</td></tr>
+<tr><td>S3 D≥35%</td><td class="n">22%</td><td class="n">40%</td><td class="n"><b>62%</b></td><td class="n">10.7%</td><td class="n">17.7%</td><td class="n good">28.4%</td></tr>
+<tr><td>S4 企稳</td><td class="n">22%</td><td class="n">40%<br><span class="dim">（不新增）</span></td><td class="n"><b>62%</b></td><td class="n">16.4%</td><td class="n">10.4%<br><span class="dim">s 降为 20%</span></td><td class="n good">26.8%</td></tr>
+</tbody>
+</table>
+<div class="src">说明：S4 是唯一需要改假设的一档。<b>若沿用 32% 的下跌假设，S4 的权益上限只能到 51%</b>（剩余预算 30%−16.4% 已被前面的下跌耗尽）；只有承认"企稳确认后继续下跌的幅度预期可以下调"，才能维持 62%。这是对"企稳"这件事的定价——所以一旦指数重新跌破 20 日均线，必须立刻回到 32% 口径复核，仓位相应降至 51%。</div>
+</div>
+
+<p>这张表与 v1.0 最大的不同：<b>平时仓位从 35% 降到 22%，底部仓位从 90% 降到 62%，但"底部相对平时的倍数"从 2.6 倍提升到 2.8 倍。</b>也就是说，加仓的<b>相对力度</b>没减弱，只是把绝对风险压回了你声明的区间。这才符合"平时保留较多现金、极端恐慌时增加投入"的原意。</p>
+
+<h3>5.4 加仓节奏：删掉那条追涨条件</h3>
+
+<p>5.2 第二、三笔的执行条件写的是：<b>"较上一笔买价再跌至少 5%，或连续 3 日站上其 20 日均线"</b>。前半句是对的；后半句是追涨条件——在下跌档位里，价格站上 20 日均线通常意味着已经反弹了一段，此时买入会抬高该批成本，而后续 12% 止盈是按该批成本算的，<b>等于自己把止盈门槛抬高了</b>。</p>
+
+<p>更严重的是它和"至少间隔 5 个交易日"叠加：一次急跌反弹行情里，第二笔极可能在已经涨了 10-15% 的位置成交。这与"低位布局"的目标直接冲突。</p>
+
+<div class="box box-green">
+  <span class="t">改法</span>
+  <p>第二、三笔只保留<b>"较上一笔再跌至少 5%"</b>一个价格条件；同时补一条时间条件：<b>本笔预算在首次符合条件的 20 个交易日内未成交，自动取消且不结转到下一档</b>。</p>
+  <p style="margin-top:8px">代价是明确的：如果市场 V 型反转，你会只买到第一笔。文档 5.2 已经接受这个结果（"反弹太快没买满可以接受"），v1.1 只是让它真正成立，而不是嘴上接受、规则上却偷偷追高。</p>
+</div>
+
+<h3>5.5 退出：三处参数调整</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:20%">项目</th><th style="width:24%">v1.0</th><th style="width:28%">v1.1</th><th>理由</th></tr></thead>
+<tbody>
+<tr><td>移动退出幅度</td><td>红利／300 8%<br>500 10%<br>科创／行业 12%</td><td><b>15% / 18% / 22%</b><br>两段式：1× 卖剩余 50%，1.5× 清完</td><td>8% ≈ 0.4 倍年化波动，是噪声不是趋势（3.2）</td></tr>
+<tr><td>时间退出</td><td>252 日复核<br>252 日减半<br>378 日清仓</td><td>252 日仅书面复核<br><b>504 日 + 收益≤0 + 估值未改善</b> → 减半<br>756 日 → 退出剩余</td><td>1.5 年强平会卖在底部区域；且与"5 年资金"矛盾（3.3）</td></tr>
+<tr><td>固定止盈</td><td>12% → 25%<br>20% → 75%<br>28% → 100%</td><td><b>保留不变</b><br><span class="dim">仅加一条：持有满 12 个月且 r≥8% 也可触发第一档</span></td><td>这套设计本身是对的（文档 6.1 的分析很到位）；补充条款只为避免慢涨批次永远不触发</td></tr>
+<tr><td>"止盈后本轮不再加该类"</td><td>5.3 第 4 条：永久排除</td><td>改为<b>"止盈后不再加新批次，直到进入更深一档（S2/S3）"</b></td><td>原条款在 V 型行情里会因为一次早期止盈而永久失去该类资产的整轮机会</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>5.6 资产表：三处权重重设</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>资产</th><th class="n">v1.0 S0</th><th class="n">v1.1 S0</th><th class="n">v1.1 S3</th><th>改动理由</th></tr></thead>
+<tbody>
+<tr><td>红利资产</td><td class="n">12%</td><td class="n"><b>11%</b><br><span class="dim">+ 核心账内 11%</span></td><td class="n">20%</td><td>压力测试中跌幅最小（−25%）且带现金流，是风险效率最高的一腿，应保持双核心地位</td></tr>
+<tr><td>沪深300</td><td class="n">15%</td><td class="n"><b>11%</b><br><span class="dim">+ 核心账内 11%</span></td><td class="n">26%</td><td>同上，与红利并列双核心</td></tr>
+<tr><td>中证500增强</td><td class="n">5%</td><td class="n"><b>2%</b><br><span class="dim">另 2% 用 500ETF</span></td><td class="n"><b>8%</b></td><td>超额中位数仅 1.6%、榜单年年换血、下跌照跌——额度减半，一半改 ETF 去掉"选管理人"这个额外赌注（3.5）</td></tr>
+<tr><td>科创50</td><td class="n">2%</td><td class="n">1%</td><td class="n"><b>4%</b></td><td>当前 PE 分位 47%（中位），不构成"便宜"；且历史短、估值指标解释力弱</td></tr>
+<tr><td>行业ETF</td><td class="n">1%</td><td class="n">1%</td><td class="n"><b>4%</b></td><td>总额度保留，但受下面一条硬约束</td></tr>
+<tr class="hl"><td><b>新增硬约束</b></td><td colspan="3">科创50 + 行业ETF <b>合计 ≤ 权益的 15%</b></td><td>v1.0 在 S4 时两者合计 20% NAV ≈ 权益的 22%，与"小比例弹性"的自述矛盾</td></tr>
+<tr><td>短债／存单指数</td><td class="n dim">—</td><td class="n"><b>缓冲账的 30-40%</b></td><td class="n">同</td><td>1 年期国债 1.173%、5 年期 1.316%；比纯货基多 0.5-0.8pp/年（缺口一）</td></tr>
+</tbody>
+</table>
+<div class="src">注：v1.1 的百分比口径已改为"核心账恒定 + 机动账按阶段"，不再是单一阶梯，因此 S0 列出现两段拆分。总权益 = 22% 核心 + 上表机动部分，与 5.3 的表一致。</div>
+</div>
+
+<p><small>另需提醒：红利资产在 2023-2025 是 A 股最强的风格之一，拥挤度已经不低。它的低波动优势在回撤期有效，但"低波动"本身也是一种可能被交易的风格。文档 3.1 写的"排除一次性高股息和盈利衰退陷阱"要真正执行，不能只当备注。</small></p>
+
+<h3>5.7 变更清单</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:4%">#</th><th style="width:20%">改动</th><th style="width:26%">v1.0 原文</th><th style="width:28%">v1.1</th><th>优先级</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>资金分三账</td><td>全部资金执行周期策略</td><td>核心 22% 恒定 + 机动 0-40% + 缓冲</td><td><span class="tag tag-r">必改</span></td></tr>
+<tr><td>2</td><td>总权益上限</td><td>90%（进取版）</td><td>62%</td><td><span class="tag tag-r">必改</span></td></tr>
+<tr><td>3</td><td>平时权益</td><td>35%</td><td>22%</td><td><span class="tag tag-r">必改</span></td></tr>
+<tr><td>4</td><td>阶段判定</td><td>D 且 P 且 连续3日（AND）</td><td>四维打分 ≥4 / ≥6 / ≥7</td><td><span class="tag tag-r">必改</span></td></tr>
+<tr><td>5</td><td>移动退出</td><td>8% / 10% / 12%</td><td>15% / 18% / 22%，两段式</td><td><span class="tag tag-r">必改</span></td></tr>
+<tr><td>6</td><td>时间退出</td><td>252/378 日强制</td><td>504/756 日 + 条件触发</td><td><span class="tag tag-a">建议改</span></td></tr>
+<tr><td>7</td><td>第二三笔条件</td><td>再跌 5% <b>或</b> 站上 20 日线</td><td>只保留再跌 5% + 20 日失效</td><td><span class="tag tag-a">建议改</span></td></tr>
+<tr><td>8</td><td>500增强权重</td><td>5% → 20%</td><td>4%（含 2% ETF）→ 8%</td><td><span class="tag tag-a">建议改</span></td></tr>
+<tr><td>9</td><td>高波动合计上限</td><td>无（实际可达权益 22%）</td><td>≤ 权益 15%</td><td><span class="tag tag-a">建议改</span></td></tr>
+<tr><td>10</td><td>现金分类</td><td>货币基金为主</td><td>30-40% 短债／存单指数</td><td><span class="tag tag-a">建议改</span></td></tr>
+<tr><td>11</td><td>及格线</td><td>未定义</td><td>年化须跑赢 35/65 基准 3pp</td><td><span class="tag tag-b">补上</span></td></tr>
+<tr><td>12</td><td>初始化条款</td><td>未定义</td><td>首次启用时 D 已 ≥15%，按当前 D 映射档位</td><td><span class="tag tag-b">补上</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2><span class="num">06</span>先用 90 天验证，别急着投钱</h2>
+
+<p>这份策略至今没有任何回测或模拟记录（文档自己也承认）。在改完参数之后，建议按下面的顺序推进——<b>每一关不过就停在原地，不要用"再试一次"绕过</b>：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:12%">时间</th><th style="width:34%">做什么</th><th>通过标准</th></tr></thead>
+<tbody>
+<tr><td><b>第 1-2 周</b></td><td>填掉文档 2.3 的五个数字，特别是<b>R 与最大可亏金额</b>；把现有持仓归类到三账</td><td>R 写成具体百分比，且与"最大可亏金额 ÷ 当前净值"一致；核心账与机动账能分开算</td></tr>
+<tr><td><b>第 3-4 周</b></td><td>用最近 10 年的历史数据，把 <b>S1/S2/S3 各自被触发过几次、每次之后 1/2/3 年的收益</b>跑出来</td><td>能回答：这套规则在 2011-2014、2015、2018、2021-2024 各给出什么信号；平均空仓期多长</td></tr>
+<tr><td><b>第 5-8 周</b></td><td>做<b>参数稳健性检验</b>：把打分阈值各 ±1 分、移动退出各 ±5pp、时间退出 ±126 日，看结果是否翻盘</td><td>结果不因小幅调参而大幅改变；若翻盘，说明参数是在拟合某一段行情</td></tr>
+<tr><td><b>第 9-12 周</b></td><td>纸面执行：每周按真实收盘数据填观察表与批次台账，<b>只记录不下单</b></td><td>能连续 12 周不断更；每个决策都能追溯到某个规则编号，而不是"我觉得"</td></tr>
+<tr><td><b>第 13 周</b></td><td>做一次<b>归因复盘</b>：如果这三个月不做任何操作，结果会更好还是更差</td><td>想清楚这个问题再决定首笔规模</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="box box-green">
+  <span class="t">最后一个建议，也是最重要的一个</span>
+  <p>不要把全部投资资金放进这套策略。<b>它解决的问题（避开追高、在恐慌中保持现金流）是真实的，但它创造的新风险（空仓期过长、参数未验证、A 股单一市场暴露）也是真实的。</b>用 40% 的资金做周期机动、另外 60% 按固定股债比长期持有——这样即使择时部分完全失效，你的整体结果也不会比基准差太多。</p>
+  <p style="margin-top:8px">这套文档最动人的一句话是："能继续参与下一轮，比这一轮恰好买在最低点更重要。"这句话也应该用在策略本身：<b>能继续用下去的策略，比一个设计完美但参数没验证的策略更重要。</b></p>
+</div>
+
+<h2><span class="num">07</span>关键假设与数据披露</h2>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:26%">项目</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>权益端加权跌幅 32%</td><td>直接沿用文档 7.2 的分类假设（红利 −25%、沪深300 −30%、中证500 −35%、科创50 与行业 −40%）按 S3 权重加权所得。是情景假设，不是预测。</td></tr>
+<tr><td>权益长期年化 6-8%</td><td>用于计算"及格线"，是假设值，不是对未来的预测。若实际只有 4%，及格线会相应下降。</td></tr>
+<tr><td>PE / PB / ERP 分位</td><td>各家口径差异明显（PE 十年分位在 52%–69% 之间，取决于样本区间与整体法/滚动法）。本报告用区间而非单点，并明确不以其精确值作为唯一依据。</td></tr>
+<tr><td>中证500 回撤</td><td>采用公开行情汇总的高点 9147.56（2026-07-01）与低点 6253.79（2026-11-02），近一年最大回撤 −30.62%。与沪深300 的对比基于各自高点，非同一日期起点。</td></tr>
+<tr><td>500增强超额数据</td><td>来自开源证券金工、Wind／省心研究院、晨星与基金季报转述，属非一手来源的汇总，具体以基金定期报告为准。</td></tr>
+<tr><td>未做的事</td><td>本报告<b>没有做历史回测</b>。第 06 节的验证协议是建议，不是已完成的验证。任何基于本报告的仓位决策，都应先完成那 90 天。</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="disc">
+  <p><b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</p>
+  <p style="margin-top:8px">数据截止 2026-11-05 收盘，报告生成于 2026-11-06。行情与估值数据来自 westock-data、neodata 统一估值查询；估值分位与基金业绩数据来自 Wind、天风期货、华泰柏瑞、开源证券金工、省心研究院、晨星等公开转述，均为非一手来源，需核实原文。</p>
+</div>
+
+</div>
+
+<script>
+(function(){
+  var c1 = echarts.init(document.getElementById('chart1'));
+  c1.setOption({
+    tooltip: { trigger: 'axis', valueFormatter: function(v){ return v + '%'; } },
+    legend: {
+      data: ['v1.0 原表', 'v1.0 声明可承受的回撤', 'R=20% 反推上限', 'R=25% 反推上限', 'v1.1 方案：低起点'],
+      bottom: 0, itemGap: 18, textStyle: { fontSize: 11.5, color: '#5b6270' }
+    },
+    grid: { left: 54, right: 26, top: 24, bottom: 62 },
+    xAxis: {
+      type: 'category',
+      data: ['S0 平时', 'S1 D≥15%', 'S2 D≥25%', 'S3 D≥35%', 'S4 企稳'],
+      axisLine: { lineStyle: { color: '#d8d5cf' } },
+      axisLabel: { color: '#5b6270', fontSize: 11.5 },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value', name: '权益仓位上限 (%)', nameTextStyle: { color: '#8b919c', fontSize: 11 },
+      max: 100, splitLine: { lineStyle: { color: '#efede8' } },
+      axisLabel: { color: '#8b919c', fontSize: 11 }
+    },
+    series: [
+      {
+        name: 'v1.0 原表', type: 'line', data: [35, 50, 65, 80, 90],
+        lineStyle: { width: 2.5, color: '#b3392e', type: 'dashed' },
+        itemStyle: { color: '#b3392e' }, symbolSize: 7,
+        label: { show: true, position: 'top', fontSize: 10, color: '#b3392e', formatter: '{c}%' }
+      },
+      {
+        name: 'v1.0 声明可承受的回撤', type: 'line', data: [null, null, null, 46, null],
+        lineStyle: { width: 0 }, itemStyle: { color: '#b3392e' }, symbol: 'diamond', symbolSize: 13,
+        label: { show: true, position: 'right', fontSize: 10, color: '#b3392e', formatter: '隐含 46%' }
+      },
+      {
+        name: 'R=20% 反推上限', type: 'line', data: [35, 45, 35, 24, 16],
+        lineStyle: { width: 1.8, color: '#a8761a' }, itemStyle: { color: '#a8761a' }, symbolSize: 6
+      },
+      {
+        name: 'R=25% 反推上限', type: 'line', data: [35, 65, 46, 32, 21],
+        lineStyle: { width: 1.8, color: '#2f7189' }, itemStyle: { color: '#2f7189' }, symbolSize: 6
+      },
+      {
+        name: 'v1.1 方案：低起点', type: 'line', data: [22, 37, 52, 62, 62],
+        lineStyle: { width: 3, color: '#2c6e52' }, itemStyle: { color: '#2c6e52' }, symbolSize: 7,
+        areaStyle: { color: 'rgba(44,110,82,0.07)' },
+        label: { show: true, position: 'bottom', fontSize: 10, color: '#2c6e52', formatter: '{c}%' }
+      }
+    ]
+  });
+
+  var c2 = echarts.init(document.getElementById('chart2'));
+  c2.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: function(v){ return v + '%'; } },
+    grid: { left: 130, right: 60, top: 20, bottom: 34 },
+    xAxis: {
+      type: 'value', max: 100, name: '历史分位 (%)', nameTextStyle: { color: '#8b919c', fontSize: 11 },
+      splitLine: { lineStyle: { color: '#efede8' } },
+      axisLabel: { color: '#8b919c', fontSize: 11 }
+    },
+    yAxis: {
+      type: 'category',
+      data: ['股息率−国债利差分位', 'ERP 分位', 'PB 分位', 'PE-TTM 分位'],
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: '#16181d', fontSize: 12 }
+    },
+    series: [{
+      type: 'bar', barWidth: 22,
+      data: [
+        { value: 97, itemStyle: { color: '#2c6e52' } },
+        { value: 78, itemStyle: { color: '#2c6e52' } },
+        { value: 30, itemStyle: { color: '#2c6e52' } },
+        { value: 60, itemStyle: { color: '#b3392e' } }
+      ],
+      label: { show: true, position: 'right', fontSize: 11.5, color: '#16181d', formatter: '{c}%' },
+      markLine: {
+        silent: true, symbol: 'none',
+        lineStyle: { color: '#b3392e', type: 'dashed', width: 1.2 },
+        label: { formatter: 'v1.0 要求 P≤40%', position: 'insideEndTop', fontSize: 10.5, color: '#b3392e' },
+        data: [{ xAxis: 40 }]
+      }
+    }]
+  });
+
+  window.addEventListener('resize', function(){ c1.resize(); c2.resize(); });
+})();
+</script>
+</body>
+</html>
