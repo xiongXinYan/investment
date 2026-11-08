@@ -87,10 +87,12 @@ const GENERATED = new Set([
   'manifest.json', 'data_audit_report.json', 'data_manifest.json', 'metrics_v16.json',
   'phase5_backtest_data.json', 'phase6_stress_v16.json', 'regression_baseline.json'
 ]);
-// 注意：仓库若开了 status.branch，`git status --porcelain` 会输出 `## main...origin/main`
-// 之类的分支头。不过滤掉的话，它会被当成「4 个脏文件名」写进指纹（实际发生过）。
+// 只接受 porcelain 的「两字符状态 + 空格」行。本机 git 会额外输出
+//   ## main...origin/main [ahead 5] / Your branch is ahead of ... / nothing to commit ...
+// 这些人类可读行曾被当成 4 个脏文件名写进指纹（实际发生过），必须按格式过滤，
+// 而不是靠黑名单逐个排除。
 const dirtyAll = dirtyRaw ? dirtyRaw.split('\n')
-  .filter(l => l && !l.startsWith('##')).map(l => l.slice(3)) : [];
+  .filter(l => /^[ MADRCU?!]{2}\s/.test(l)).map(l => l.slice(3)) : [];
 const dirtyFiles = dirtyAll.filter(f => !GENERATED.has(path.basename(f)));
 const dirtyGenerated = dirtyAll.filter(f => GENERATED.has(path.basename(f)));
 
