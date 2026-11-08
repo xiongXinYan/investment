@@ -166,6 +166,29 @@ function buildResults(docs) {
     });
   }
 
+  // ---- 关卡状态：谁说「纸面执行开始了没有」 ----
+  // HTML 报告写「未开始」，README 与策略文档写「进行中」——数字全对、状态相反，
+  // 读者没法判断这份报告是不是已经过期。这与本文件开头那个问题同源：
+  // 同一件事写两遍，任何一次状态变化都只改得到一半。
+  // 状态只有一个来源：gate3_state.json。文档只能转述，不能各自记忆。
+  let g3 = null;
+  try { g3 = JSON.parse(fs.readFileSync(P('gate3_state.json'), 'utf8')); } catch (e) { g3 = null; }
+  const g3Started = !!(g3 && g3.cfg && g3.cfg.start && Array.isArray(g3.rows) && g3.rows.length > 0);
+  add(!!g3, 'STATE', '第三关状态文件可读（gate3_state.json）',
+    g3Started ? '已启动，起始 ' + g3.cfg.start + '，观测 ' + g3.rows.length + ' 条' : '缺失或未启动');
+  if (g3Started) {
+    const stale = /纸面执行[^。；\n]{0,14}(未开始|尚未开始)/;
+    Object.keys(DOCS).forEach(docKey => {
+      const bad = (docs[docKey] || '').split('\n')
+        .filter(ln => stale.test(ln) && !DISCLOSURE_MARKERS.some(m => ln.includes(m)));
+      add(bad.length === 0, 'STATE', `[${docKey}] 已有记录，不得再写「纸面执行未开始」`,
+        bad.length ? '→ ' + bad[0].trim().slice(0, 80) : '');
+    });
+    // 反向：不能因为删掉旧句子就算对齐，正向叙述必须出现
+    add((docs.readme || '').includes('进行中'), 'STATE', '[readme] 关卡表标注「进行中」', '');
+    add((docs.md || '').includes('进行中'), 'STATE', '[md] 正文标注「进行中」', '');
+  }
+
   return r;
 }
 
@@ -221,10 +244,13 @@ if (process.argv.includes('--negative')) {
   const t5 = mutate(c => { c.html = repAll(c.html, '2.692', '2.691'); });
   show('⑥ HTML 把全网格极差 2.692 改成 2.691', t5);
 
-  const caught = [t1, t2, t3, t4, t5].every(x => x.length > 0);
+  const t6 = mutate(c => { c.html = repAll(c.html, '</body>', '<p>12 周纸面执行（未开始）。</p></body>'); });
+  show('⑦ HTML 把已启动的纸面执行写回「未开始」', t6);
+
+  const caught = [t1, t2, t3, t4, t5, t6].every(x => x.length > 0);
   console.log('');
   if (caught && baseFails.length === 0) {
-    console.log('✓ 负向自测通过：5 种改坏方式全部被抓到，且原样校验 0 失败');
+    console.log('✓ 负向自测通过：6 种改坏方式全部被抓到，且原样校验 0 失败');
     process.exit(0);
   }
   console.log('✗ 负向自测失败');

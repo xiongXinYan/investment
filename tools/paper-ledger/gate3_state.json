@@ -1,0 +1,50 @@
+{
+  "format": "v16_gate3_state",
+  "strategyVersion": "v1.6",
+  "cfg": {
+    "R": 0.2,
+    "E": 0.35,
+    "cap": 500000,
+    "start": "2026-11-09",
+    "costBp": 15,
+    "rateDefault": 1.3,
+    "codeH": "510300",
+    "idxH": "000300.SH",
+    "codeD": "515080",
+    "idxD": "000922.CSI"
+  },
+  "positions": {
+    "sharesH": 31800,
+    "sharesD": 27900,
+    "lot": 100
+  },
+  "baseline": {
+    "date": "2026-11-06",
+    "ph": 4.124,
+    "pd": 1.563,
+    "cost": 262.12
+  },
+  "rows": [
+    {
+      "date": "2026-11-06",
+      "vH": 131143.2,
+      "vD": 43607.7,
+      "cash": 324986.98,
+      "rate": 1.3,
+      "tag": "建仓基准"
+    }
+  ],
+  "reviews": [],
+  "rebal": [],
+  "final": {
+    "answers": {},
+    "verdict": "",
+    "sign": "",
+    "note": ""
+  },
+  "meta": {
+    "createdAt": "2026-11-08T13:07:13.586Z",
+    "updatedAt": "2026-11-08T13:07:13.587Z",
+    "priceSource": "收盘价（不复权）"
+  }
+}
