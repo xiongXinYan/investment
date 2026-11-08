@@ -67,7 +67,7 @@ npm run test:full     # 闸门 + 重算主回测/敏感性/压力 + 重算后指
 | `tests/test_report_consistency.js` | MD / HTML / README / 台账 与数据源逐位一致，且不得复用已撤销措辞 | 同一结论在多份文档里改到一半 |
 | `tests/test_regression.js` | 17 个用例的整条净值序列（容差 1e-9） | 改动动了数字 |
 | `tests/test_ledger_v16.js` | 纸面台账 80 条断言（浮点边界、空行守卫、备份校验） | 台账会算错数 |
-| `tests/test_gate3.js` | 第三关 63 条断言（整手取整、成本、现金计提、再平衡、导出可被台账导入） | 12 周的记录会算错，且不可重建 |
+| `tests/test_gate3.js` | 第三关 73 条断言（整手取整、成本、现金计提、再平衡、价格量级、导出可被台账导入） | 12 周的记录会算错，且不可重建 |
 | `src/manifest.js` | 回测指纹：config / data / 引擎 / 产物四组哈希 + commit | 报告与数据/配置已脱钩 |
 
 不变量测试与溯源校验都带负向自测（`--negative` 与临时改坏数据验证），确保检查本身不是空转。

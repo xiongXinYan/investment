@@ -19,6 +19,7 @@
 // 用法：
 //   node tools/paper-ledger/gate3.js init  --date 2026-11-06 --ph 4.124 --pd 1.563
 //   node tools/paper-ledger/gate3.js week  --date 2026-11-13 --ph 4.150 --pd 1.570
+//          [--confirm-outlier]   单周价格变动超过 25% 时必须显式确认，防小数点错位
 //   node tools/paper-ledger/gate3.js rebal --date 2026-12-31 --ph 4.080 --pd 1.540
 //   node tools/paper-ledger/gate3.js status [--json]
 //   node tools/paper-ledger/gate3.js export
@@ -43,6 +44,10 @@ const APP_VERSION = '1.6.1';          // 与台账 HTML 的 APP_VERSION 对齐
 const BACKUP_FORMAT = 'v16_paper_ledger_backup';
 const LOT = 100;
 const TOL = 1e-9;
+// 单周价格变动的合理上限。510300 历史上最差的单周也没到 20%，
+// 取 25% 是为了拦住「4.124 录成 41.24 / 0.4124」这类量级错误，而不是拦真实行情；
+// 真遇到极端周，用 --confirm-outlier 显式放行。
+const OUTLIER = 0.25;
 
 // v1.6 R→E 表（写死；与台账 HTML 的 R2E 完全一致）
 const R2E = {
@@ -147,6 +152,26 @@ function checkMark(state, o) {
   if (!(o.ph > 0) || !(o.pd > 0)) return '价格必须为正数';
   if (!(o.rate >= 0 && o.rate <= 20)) return '现金年利率须在 0~20 之间（单位 %）';
   if (o.cashAdd != null && !isFinite(o.cashAdd)) return '现金调整必须是数值';
+
+  // 价格量级守卫：手工录入最常见的事故不是「记晚了一天」，而是小数点错位
+  // （4.124 → 41.24 / 0.4124）。它会同时改掉总资产与回撤，而回撤正是这一关
+  // 唯一要衡量的东西；一旦写进去，后面所有周的高水位都被污染，且看起来一切正常。
+  // 上一条观测的隐含价格可以由 vH ÷ 当前份额反推：份额只在再平衡时变动，
+  // 而再平衡会同时改写那一条观测，所以两者始终自洽。
+  if (!o.confirmOutlier) {
+    const jump = (label, now, prev) => {
+      if (!(prev > 0)) return null;
+      const mv = now / prev - 1;
+      if (Math.abs(mv) <= OUTLIER) return null;
+      return label + ' 由 ' + prev.toFixed(3) + ' 变到 ' + now.toFixed(3) +
+        '（' + (mv > 0 ? '+' : '') + (mv * 100).toFixed(1) + '%），超过单周 ' + (OUTLIER * 100) +
+        '% 阈值。若行情确如此，加 --confirm-outlier 重跑；否则多半是小数点错位。';
+    };
+    const e1 = jump(state.cfg.codeH, o.ph, num(last.vH) / state.positions.sharesH);
+    if (e1) return e1;
+    const e2 = jump(state.cfg.codeD, o.pd, num(last.vD) / state.positions.sharesD);
+    if (e2) return e2;
+  }
   return null;
 }
 
@@ -462,7 +487,7 @@ function cmdWeek(a) {
   const cashAdd = a['cash-add'] == null ? 0 : parseFloat(a['cash-add']);
   const ph = num(a.ph), pd = num(a.pd);
 
-  const bad = checkMark(state, { date, ph, pd, rate, cashAdd });
+  const bad = checkMark(state, { date, ph, pd, rate, cashAdd, confirmOutlier: !!a['confirm-outlier'] });
   if (bad) fail(bad);
 
   const row = markRow(last, state.positions, { date, ph, pd, rate, cashAdd });
@@ -494,6 +519,18 @@ function cmdWeek(a) {
   }
   if (cur.eq != null && Math.abs(cur.eq - m.eq) > 0.05) {
     console.log('⚠ 权益占比偏离目标 ' + pp(cur.eq - m.eq) + '（超 ±5pp）：按护栏① 暂停自动再平衡，人工核对份额与台账。');
+  }
+
+  // 季末再平衡提醒：写在【代码】里，而不是写在某个自动任务的提示词里。
+  // 提示词哪天被改掉、换个人跑、或者手动执行，都还在。
+  // 2026-12-31 那一周的周五是元旦休市，周记会落在 12-31 本身，
+  // 若只靠「周五提醒」很容易整季漏做 —— 漏做本身就是最该被记录的执行偏差。
+  const qe = nextQuarterEnd(state.cfg.start);
+  if (date >= qe && !state.rebal.some(x => x.date >= qe)) {
+    console.log('');
+    console.log('⚠ 本期已跨过季末 ' + qe + '，但还没有再平衡记录。规则要求每个季末把权益重置回 ' + pct(m.eq) + '、内部 75/25（补做只能记在本次观测日，不能倒填）：');
+    console.log('  node tools/paper-ledger/gate3.js rebal --date ' + date + ' --ph ' + ph + ' --pd ' + pd);
+    console.log('  若这一季确实不执行，请在周记里写明原因；「漏做」本身就是要留下痕迹的执行偏差。');
   }
 }
 

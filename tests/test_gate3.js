@@ -95,6 +95,21 @@ eq('价格为 NaN 被拒', /正数/.test(g3.checkMark(st, Object.assign({}, good
 eq('利率 25% 被拒', /0~20/.test(g3.checkMark(st, Object.assign({}, good, { rate: 25 }))), true);
 eq('日期格式错被拒', /YYYY-MM-DD/.test(g3.checkMark(st, Object.assign({}, good, { date: '2026/11/13' }))), true);
 
+console.log('--- 3a. 价格量级：小数点错位是这一关最容易发生、也最不容易被发现的录入事故 ---');
+const mark = extra => g3.checkMark(st, Object.assign({ date: '2026-11-20', ph: 4.15, pd: 1.57, rate: 1.30, cashAdd: 0 }, extra));
+eq('整十倍价格被拒（4.15 → 41.5）', /小数点错位/.test(mark({ ph: 41.5 })), true);
+eq('缩十倍价格被拒（1.57 → 0.157）', /小数点错位/.test(mark({ pd: 0.157 })), true);
+eq('拒错信息带原价与新价，便于核对', /41\.500/.test(mark({ ph: 41.5 })), true);
+eq('显式 --confirm-outlier 后放行', mark({ ph: 41.5, confirmOutlier: true }), null);
+eq('真实极端周（+8.6%）不被误拦', mark({ ph: 4.48, pd: 1.66 }), null);
+eq('正好 25% 以内仍放行（阈值不误伤边界）', mark({ ph: 5.15 }), null);
+eq('超过 25% 即拦（5.20）', /小数点错位/.test(mark({ ph: 5.20 })), true);
+
+console.log('--- 3b. 季末识别（12-31 那一周的周五是元旦休市，靠代码而不是靠提醒）---');
+eq('起始 2026-11-09 → 2026-12-31', g3.nextQuarterEnd('2026-11-09'), '2026-12-31');
+eq('起始恰为季末日 → 当日', g3.nextQuarterEnd('2026-12-31'), '2026-12-31');
+eq('跨年 → 2027-03-31', g3.nextQuarterEnd('2027-01-05'), '2027-03-31');
+
 console.log('=== 4. 季末再平衡：75/25 重置、成本、现金不为负 ===');
 let st3 = makeState();
 // 造一个已经偏离的场景：权益涨到 40%，红利被稀释
