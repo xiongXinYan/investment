@@ -3,13 +3,15 @@ const fs = require('fs');
 const load = f => JSON.parse(fs.readFileSync(f, 'utf8')).data.klines.map(s => { const [d, c] = s.split(','); return { d, c: +c }; });
 const A = load('hs300_daily_2010_2026.json'), D = load('csi_dividend_2010_2026.json');
 const N = A.length, CASH = 0.025, FEE = 0.005;
+// 2026-11-07：股息率不再是唯一常数，改为可检验的参数；HS300 固定 2.5%
+const DIV_BASE = 0.045;
 
-function mix(eq, wDiv) {
+function mix(eq, wDiv, dy = DIV_BASE) {
   let uD = eq * wDiv / D[0].c, uH = eq * (1 - wDiv) / A[0].c, cash = 1 - eq;
   const nav = [];
   for (let i = 0; i < N; i++) {
     const vD = uD * D[i].c, vH = uH * A[i].c, e2 = vD + vH;
-    cash += e2 * (0.045 * (vD / (e2 || 1)) + 0.025 * (vH / (e2 || 1)) - FEE) / 252;
+    cash += e2 * (dy * (vD / (e2 || 1)) + 0.025 * (vH / (e2 || 1)) - FEE) / 252;
     cash *= 1 + CASH / 252;
     if (i > 0 && i % 63 === 0) { const t = e2 + cash, want = t * eq, f = want / (e2 || 1); uD *= f; uH *= f; cash = t - want; }
     nav.push(uD * D[i].c + uH * A[i].c + cash);
@@ -66,8 +68,19 @@ const comp = {
 // 5. 分档见底回撤
 const stepOld = [11.5, 19.0, 25.4, 28.7], stepNew = [10.9, 18.0, 24.0, 27.1];
 
+// 2026-11-07 新增：配置提升对股息率假设的敏感性
+// dy = 2.5% 时红利与 HS300 持有收益相同，剩下的差异纯粹来自价格序列。
+const assumptionScan = [0.025, 0.035, 0.045, 0.055].map(dy => {
+  const c = w => met(mix(0.62, w, dy)).cagr;
+  return { dy: +(dy * 100).toFixed(1), w0: c(0), w25: c(0.25), w419: c(0.419), w100: c(1),
+    gain: +(c(0.419) - c(0.25)).toFixed(2) };
+});
+const priceOnly = assumptionScan[0].gain;
+
 const out = {
   period: [A[0].d, A[N - 1].d],
+  assumptionScan, priceOnly,
+  keyRange: { dy: [2.5, 5.5], gain: [priceOnly, assumptionScan[assumptionScan.length - 1].gain] },
   scan, grid, ws, lv,
   stress: { old: pOld, neu: pNew },
   comp, stepOld, stepNew,

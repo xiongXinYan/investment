@@ -1,5 +1,7 @@
+// 历史报告渲染器：固定读取 v1.1 口径的归档数据，输出 2026-11-06 的原版报告。
+// 修正后的 v1.2 口径报告请用 node opt_report.js 生成。
 const fs = require('fs');
-const D = JSON.parse(fs.readFileSync('bt_data.json', 'utf8'));
+const D = JSON.parse(fs.readFileSync('bt_data_v1.1_archive.json', 'utf8'));
 const M = D.metrics;
 const p = (x, d = 2) => (x * 100).toFixed(d) + '%';
 
@@ -291,5 +293,6 @@ window.addEventListener('resize',()=>{c1.resize();c3.resize();c4.resize();});
 </body>
 </html>`;
 
-fs.writeFileSync('回测报告_卖出规则_2026-11-06.html', html);
-console.log('written', (html.length / 1024).toFixed(0) + 'KB');
+const finalHtml = html.replace('__DATA__', JSON.stringify(D));
+fs.writeFileSync('回测报告_卖出规则_2026-11-06.html', finalHtml);
+console.log('written', (finalHtml.length / 1024).toFixed(0) + 'KB');
