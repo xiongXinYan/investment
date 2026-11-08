@@ -11,8 +11,14 @@ _s*.js
 _c*.js
 _v*.js
 
+# 临时排查留下的备份与日志（不属于研究证据）
+.bak_*
+.tmp_*
+
 # 系统文件
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# IDE 个人工作区配置：不进版本库（.iml / workspace.xml 是机器相关状态）
 /.idea/

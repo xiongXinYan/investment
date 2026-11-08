@@ -1,0 +1,94 @@
+{
+  "schema": "strategy-config/v1",
+  "version": "1.6",
+  "releasedAt": "2026-11-08",
+  "status": "paper-execution-pending",
+  "note": "本文件是 v1.6 策略参数的【机器可读登记】，不是注入源。当前引擎仍从 phase2_indices.js / bt_r_clause.js 读取参数，config/verify_config.js 逐项断言二者一致——任何一方单独改动都会被闸门拒绝。用途是让「这一版策略到底是什么」有一个不依赖代码阅读的答案，并为将来切换为注入式配置留出接口。",
+
+  "universe": {
+    "riskAsset": "沪深300 全收益替代（价格指数 000300 + 逐日股息计入现金）",
+    "riskAssetCode": "000300",
+    "secondAsset": "中证红利 000922",
+    "secondAssetCode": "000922",
+    "cash": "现金账户，按分段利率计息（见 cashRateSegments）",
+    "discipline": "仅场内 ETF / 指数基金，不选股、不做行业轮动、不引入外部宏观读数"
+  },
+
+  "allocation": {
+    "equityWeightOfBook": 0.35,
+    "equityWeightOfBookNote": "R=20% 档。四档映射见 riskTable，配置切换须整表重跑，不得单独改一档。",
+    "withinEquity": {
+      "hs300": 0.75,
+      "dividend": 0.25
+    },
+    "withinEquityNote": "权益内部每日重置到 75/25（对应引擎 w=0.25），不是每月/每季再平衡。",
+    "cashWeightOfBook": 0.65
+  },
+
+  "riskTable": {
+    "mapping": [
+      { "R_pct": 15, "E_pct": 25 },
+      { "R_pct": 20, "E_pct": 35 },
+      { "R_pct": 25, "E_pct": 45 },
+      { "R_pct": 30, "E_pct": 55 }
+    ],
+    "marginRulePP": 2.7,
+    "marginRuleBasis": "single_main",
+    "marginRuleBasisNote": "2.7pp 以主口径单维极差 1.473pp 为标尺（约 1.83 倍），不是对全网格极差留 2 倍；对全网格 2.692pp 余量仅 1.03~1.19 倍。",
+    "selectionRule": "选使 MDD ≤ R − 2.7pp 的最大 5% 整数档敞口"
+  },
+
+  "rebalancing": {
+    "mode": "reset",
+    "frequency": "quarterly",
+    "intervalTradingDays": 63,
+    "calendarAlternative": "calQ（日历季末最后交易日）仅作敏感性对照，不是执行口径",
+    "threshold": null,
+    "thresholdNote": "本策略不使用阈值触发式再平衡。外部建议里的「threshold: 0.05」与本策略不符：再平衡是固定 63 交易日整表重置（rebal='reset'），残差偏移不构成触发条件。"
+  },
+
+  "riskControl": {
+    "rClause": {
+      "enabled": false,
+      "historyNote": "v1.5 第 5 条「账户回撤达 R 时目标敞口减半一次」在 v1.6 已删除。触发 0 次不构成删除理由（不可评估），删除理由是 160 口径变体中 4 处各自独立即可使其触发 1 次——即「边界敏感、非结构性免疫」。",
+      "policy": "回撤达 R 只做一次书面复核：不改 E、不改份额、不改 75/25、不暂停再平衡"
+    },
+    "tailProtection": false,
+    "tailProtectionNote": "本组合没有任何尾部保护机制。R 是资金安排的输入参数，不是回撤上限保证；慢熊路径实测可达 1.17~1.41 倍 R（R=20%/E=35%）、2.16~2.55 倍 R（R=30%/E=55%）。",
+    "maxDrawdownBudget": 0.20
+  },
+
+  "execution": {
+    "tradeTiming": "T+1",
+    "execLagDays": 1,
+    "feeBps": 5,
+    "slippageBps": 10,
+    "dividendTaxPct": 0,
+    "minTradeNotionalCNY": 2000,
+    "minTradeNotionalNote": "由 execution_simulator.js 的整手扫描得出：123 笔里 117 笔撞 5 元佣金地板价，最小一笔 221 元付 226bp。单笔低于 2000 元不交易。",
+    "lotSize": 100
+  },
+
+  "costs": {
+    "tradeFee": 0.0005,
+    "slippage": 0.001,
+    "divTax": 0,
+    "execLag": 1,
+    "note": "COST_T1（phase2_indices.js）。T+0 / 含税两套对照口径仅在敏感性表中出现，不是执行口径。"
+  },
+
+  "cashRateSegments": [
+    { "from": "2010-01-01", "to": "2014-12-31", "rate": 0.030 },
+    { "from": "2015-01-01", "to": "2021-12-31", "rate": 0.023 },
+    { "from": "2022-01-01", "to": null, "rate": 0.013 }
+  ],
+
+  "provenance": {
+    "doc": "投资策略规划_v1.6.md",
+    "engine": "bt_r_clause.js",
+    "dataBaseline": "phase2_indices.js",
+    "metrics": "metrics_v16.json",
+    "report": "回测报告_v1.6_2026-11-08.html",
+    "confirmScript": "config/verify_config.js"
+  }
+}

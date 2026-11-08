@@ -5,7 +5,35 @@
 **标的范围**：沪深300、中证红利
 **回测区间**：2010-01-04 至 2026-11-06（约 16.8 年，4,089 个交易日）
 **资金规模假设**：50 万元
-**当前版本**：`投资策略规划_v1.6.md`
+**当前版本**：`docs/strategy/投资策略规划_v1.6.md`
+
+---
+
+## 仓库结构（2026-11-08 阶段一目录治理）
+
+```text
+run_all.js             唯一验证入口（7 道闸门 + 可权重算）
+package.json           npm 命令：test / test:full / backtest / stress / metrics / audit
+manifest.json          回测指纹（哪份数据、哪版引擎、哪套配置）
+config/strategy/       策略参数登记（v1.6.json）+ 与代码的 34 项一致性断言
+lib/                   路径登记表（paths.js）+ 哈希工具（canonical.js）
+src/                   全部脚本（扁平：依赖图未拆，见迁移清单 §二）
+data/raw               原始数据，只读。变动即作废全部报告
+data/processed         清洗/对齐后的回测数据
+data/derived           派生结果（指标、压力、审计、回归基线）——不是输入
+reports/current        当前正式报告   reports/archive 历史报告（证据）
+docs/strategy          正式策略   docs/strategy/archive 历史版本（内容不改）
+docs/methodology       方法与审计   docs/decisions 研究裁决
+research/logs          实验日志
+tools/paper-ledger     12 周纸面执行台账
+tests/                 一致性 / 回归 / 台账测试
+```
+
+三条使用规则：
+
+1. **要跑东西，先 `node run_all.js`**（或 `npm test`）。闸门失败时不要引用任何数字。
+2. **报告是产物，不是数据源**。`reports/` 里的 HTML 不可手改数字，改要改 `metrics_v16.json` 的上游。
+3. **找不到文件住哪儿，查 `lib/paths.js` 的 LAYOUT 表**。逐文件迁移理由见 `docs/engineering/迁移清单_v1.0.md`。
 
 ---
 
@@ -13,23 +41,23 @@
 
 | 顺序 | 文件 | 内容 |
 | --- | --- | --- |
-| 1 | `投资策略规划_v1.6.md` | **当前版（规则定稿）。六条规则中第 5 条由「达 R 减半一次」改为「达 R 只做一次书面复核、不改敞口」；第 4 条因此不再有任何触发口；R→E 表三档下调 5pp 并新增「余量 ≥ 2.7pp」约束；新增无保护声明** |
-| 2 | `回测报告_v1.6_2026-11-08.html` | **本轮证据。三张表物理分离（A 触发事件层 / B 策略绩效层 / C 口径敏感性诊断层）、808 单元口径敏感性全矩阵、静态敞口完整权衡曲线、−105% 越界单元的数据质量披露** |
-| 3 | `纸面执行台账_v1.6.html` | **12 周纸面执行的配套工具**（自包含、离线、可打印）：周度台账自动算回撤/权益占比/红利占比、季末再平衡按 75/25 算应买卖份额、达 R 书面复核留痕、12 周判定五问，可导出 CSV。**这是「唯一剩余关卡」的载体** |
-| 4 | `P0审计报告_2026-11-08.md` | **第五轮：代码审计**。7 处缺陷（附可复算证据与影响量级）、3 项新证据（红利防御不成立 / 季度再平衡双面性 / 整手约束可忽略）、明确列出「没做什么、为什么」 |
-| 5 | `投资策略规划_v1.5.md` | 上一版。六条规则含第 5 条减半条款；R→E 表为 30/40/50/55 |
-| 6 | `回测报告_最终方案审计_2026-11-07.html` | 第三轮证据：对 v1.4 最终方案做同等强度证伪、成本 realism、R 条款检验、相对重估双向证据，单列 75/25 执行口径 |
-| 7 | `回测报告_扩展验证_2026-11-07.html` | 真实股息率、估值证伪、极端路径风控、样本外前推、数据可得性 |
-| 8 | `回测报告_修正版_2026-11-07.html` | 引擎同步到 v1.2 规则后的归因、稳健性与显著性（常数股息率口径） |
-| 9 | `策略评估报告_2026-11-07.md` | 对 v1.2 的独立审计，14 项问题分级（A1 数字已附更正） |
-| 10 | `deliverables/a-share/portfolio-health-final-plan-2026-11-07.md` | 第三轮 A 股研究团队汇编报告（含误填更正记录与重新收口） |
-| 11 | `投资策略规划_v1.4.md` / `v1.3.md` / `v1.2.md` / `v1.1.md` / `v1.0.md` | 历史版本，保留作研究记录，**均不再作为可选模块启用** |
-| 12 | `策略审计报告_v1.0_20261106.html`、`回测报告_2010-2026.html`、`回测报告_卖出规则_2026-11-06.html`、`配置调整报告_v1.2.html` | 历史报告（旧口径，见下方提醒） |
+| 1 | `docs/strategy/投资策略规划_v1.6.md` | **当前版（规则定稿）。六条规则中第 5 条由「达 R 减半一次」改为「达 R 只做一次书面复核、不改敞口」；第 4 条因此不再有任何触发口；R→E 表三档下调 5pp 并新增「余量 ≥ 2.7pp」约束；新增无保护声明** |
+| 2 | `reports/current/回测报告_v1.6_2026-11-08.html` | **本轮证据。三张表物理分离（A 触发事件层 / B 策略绩效层 / C 口径敏感性诊断层）、808 单元口径敏感性全矩阵、静态敞口完整权衡曲线、−105% 越界单元的数据质量披露** |
+| 3 | `tools/paper-ledger/纸面执行台账_v1.6.html` | **12 周纸面执行的配套工具**（自包含、离线、可打印）：周度台账自动算回撤/权益占比/红利占比、季末再平衡按 75/25 算应买卖份额、达 R 书面复核留痕、12 周判定五问，可导出 CSV。**这是「唯一剩余关卡」的载体** |
+| 4 | `docs/methodology/P0审计报告_2026-11-08.md` | **第五轮：代码审计**。7 处缺陷（附可复算证据与影响量级）、3 项新证据（红利防御不成立 / 季度再平衡双面性 / 整手约束可忽略）、明确列出「没做什么、为什么」 |
+| 5 | `docs/strategy/archive/投资策略规划_v1.5.md` | 上一版。六条规则含第 5 条减半条款；R→E 表为 30/40/50/55 |
+| 6 | `reports/archive/回测报告_最终方案审计_2026-11-07.html` | 第三轮证据：对 v1.4 最终方案做同等强度证伪、成本 realism、R 条款检验、相对重估双向证据，单列 75/25 执行口径 |
+| 7 | `reports/archive/回测报告_扩展验证_2026-11-07.html` | 真实股息率、估值证伪、极端路径风控、样本外前推、数据可得性 |
+| 8 | `reports/archive/回测报告_修正版_2026-11-07.html` | 引擎同步到 v1.2 规则后的归因、稳健性与显著性（常数股息率口径） |
+| 9 | `docs/methodology/策略评估报告_2026-11-07.md` | 对 v1.2 的独立审计，14 项问题分级（A1 数字已附更正） |
+| 10 | `docs/decisions/portfolio-health-final-plan-2026-11-07.md` | 第三轮 A 股研究团队汇编报告（含误填更正记录与重新收口） |
+| 11 | `docs/strategy/archive/投资策略规划_v1.4.md` / `v1.3.md` / `v1.2.md` / `v1.1.md` / `v1.0.md` | 历史版本，保留作研究记录，**均不再作为可选模块启用** |
+| 12 | `reports/archive/策略审计报告_v1.0_20261106.html`、`reports/archive/回测报告_2010-2026.html`、`reports/archive/回测报告_卖出规则_2026-11-06.html`、`reports/archive/配置调整报告_v1.2.html` | 历史报告（旧口径，见下方提醒） |
 
 > **口径提醒（六组数字不可混用）**
 > ① 2026-11-06 的两份回测报告使用仍在跑 v1.1 旧规则（756 交易日无条件强清）的引擎；v1.2 已改成「756 日亏损 ≥15% 才清 + 1260 日硬边界」。
 > ② **v1.4 口径**：NeoData 逐年实测股息率，但现金收益仍是 2.5% 常数、且季度再平衡未重置资产间比例。R=20%/E=40% 为 3.78% / 18.49%。
-> ③ **v1.5 审计口径（70/30，仅用于统计检验）**：分段真实现金利率（3.0%/2.3%/1.3%）＋ 真 70/30 季度再平衡 ＋ 双边费 5bp ＋ 滑点 10bp ＋ T+1 成交。R=20%/E=40% 为 **3.51% / 19.67%**（全成本 3.26% / 19.80%）。`回测报告_最终方案审计_2026-11-07.html` 第 ①~⑦ 节的 +0.48pp、bootstrap、起点/窗口/分段、反事实、成本、样本外、R 条款**全部是这一口径**，对象为 v1.4 的 70/30，不因最终参数调整而改写。
+> ③ **v1.5 审计口径（70/30，仅用于统计检验）**：分段真实现金利率（3.0%/2.3%/1.3%）＋ 真 70/30 季度再平衡 ＋ 双边费 5bp ＋ 滑点 10bp ＋ T+1 成交。R=20%/E=40% 为 **3.51% / 19.67%**（全成本 3.26% / 19.80%）。`reports/archive/回测报告_最终方案审计_2026-11-07.html` 第 ①~⑦ 节的 +0.48pp、bootstrap、起点/窗口/分段、反事实、成本、样本外、R 条款**全部是这一口径**，对象为 v1.4 的 70/30，不因最终参数调整而改写。
 > ④ **v1.5 最终执行口径（75/25）**：与 ③ 同口径假设，但权重为沪深300 75% / 中证红利 25%。R=20%/E=40% 为 **3.43% / 19.69%**，基线 3.70% / 18.55%，含 10% 股息税 3.32% / 19.73%，同口径单资产 3.04% / 19.94%，增益 +0.39pp。v1.5 执行卡与 HTML 报告第 ⑧ 节用这一口径。
 > ⑤ **v1.6 第四轮主口径**：`[权重 75/25 ｜ 现金 分段 3.0%/2.3%/1.3% ｜ 成本 费5bp+滑点10bp ｜ 成交 T+1 ｜ 再平衡 q63 ｜ 股息 carry 计入]`，无任何触发条款。**v1.6 的 R→E 表为 15→25% / 20→35% / 25→45% / 30→55%**，对应 MDD 12.173% / 17.234% / 22.102% / 26.792%、年化 3.079% / 3.327% / 3.527% / 3.677%。**同一 E 下 v1.6 与 v1.4/v1.5 数字完全一致**（35%→3.327%/17.234%、40%→3.433%/19.691%、55%→3.677%/26.792%），差的是表里放哪个 E，不是引擎。
 >
@@ -37,7 +65,7 @@
 >
 > ③④⑤⑥ 不得混用，也不得与 ② 混用；择时层结论仍以 v1.4 与扩展验证报告为准。
 
-> **审计状态（2026-11-08）**：已做 P0 代码审计，`node data_audit.js` = 8 通过 / 3 告警 / 0 失败。数据本身合格（两序列 4,089 行日期逐一相等、零重复、零异常跳变、相关系数 0.8775）。**已确认 7 处缺陷、修 4 处、3 处只披露**，详见 `P0审计报告_2026-11-08.md`。核心参数决策**无一被推翻**。
+> **审计状态（2026-11-08）**：已做 P0 代码审计，`node src/data_audit.js` = 8 通过 / 3 告警 / 0 失败。数据本身合格（两序列 4,089 行日期逐一相等、零重复、零异常跳变、相关系数 0.8775）。**已确认 7 处缺陷、修 4 处、3 处只披露**，详见 `docs/methodology/P0审计报告_2026-11-08.md`。核心参数决策**无一被推翻**。
 
 ---
 
@@ -131,7 +159,7 @@ block bootstrap（20 日块、1,000 次）95% 区间 **−1.69 ~ +1.67pp**（常
 
 **4. 补上了一个证据缺口：v1.6 推荐的 E 有三档此前从未做过压力检验**
 
-Phase 5 的压力路径网格绑定 `R2EQ = [[15,30],[20,40],[25,50],[30,55]]`（v1.5 旧表），与 v1.6 的 25/35/45/55 **交集只有 55%**。`phase6_stress_v16.js` 补跑（先逐位复现原 36 单元、`maxAbsDiff = 0`），结果：**R 在急跌型情景守得住（0.70~0.92 × R），在慢熊里守不住（1.17~1.41 × R）；最高档 E=55%/R=30% 达 2.16~2.55 倍，最坏档物理越界**。初稿「1.3~1.5 倍」的表述把 E=40% 的数字挂到了 E=55% 的句子上，已更正。
+Phase 5 的压力路径网格绑定 `R2EQ = [[15,30],[20,40],[25,50],[30,55]]`（v1.5 旧表），与 v1.6 的 25/35/45/55 **交集只有 55%**。`src/phase6_stress_v16.js` 补跑（先逐位复现原 36 单元、`maxAbsDiff = 0`），结果：**R 在急跌型情景守得住（0.70~0.92 × R），在慢熊里守不住（1.17~1.41 × R）；最高档 E=55%/R=30% 达 2.16~2.55 倍，最坏档物理越界**。初稿「1.3~1.5 倍」的表述把 E=40% 的数字挂到了 E=55% 的句子上，已更正。
 
 **5. 裁决：删除触发式减半，保留书面复核 —— 理由不是「回测证明无效」**
 
@@ -156,9 +184,9 @@ Phase 5 的压力路径网格绑定 `R2EQ = [[15,30],[20,40],[25,50],[30,55]]`�
 **新增闸门（全部实跑过，不是设计稿）**
 
 ```bash
-node data_audit.js          # 11 项数据检查，硬错误直接拒绝出数
-node test_regression.js     # 17 个用例的整条净值序列，容差 1e-9
-node execution_simulator.js # 实盘：整手/最低佣金/T+1/订单明细
+node src/data_audit.js          # 11 项数据检查，硬错误直接拒绝出数
+node tests/test_regression.js     # 17 个用例的整条净值序列，容差 1e-9
+node src/execution_simulator.js # 实盘：整手/最低佣金/T+1/订单明细
 ```
 
 **数据结论：审阅最担心的数据质量是合格的。** 两序列 4,089 行日期逐一相等、零重复、零逆序、`|单日涨跌|>9%` 记录 0 条、相关系数 0.8775（确为两条独立序列）、股息率 1.23%~6.53% 无异常。**既没有错位，也没有股息重复计算。**
@@ -185,7 +213,7 @@ node execution_simulator.js # 实盘：整手/最低佣金/T+1/订单明细
 
 **核心参数决策无一被推翻。** R→E 表、触发 0 次、口径极差与余量的比较全部不变——因为它们都是 MDD/计数，不是年化。
 
-完整证据、复现命令与「没做什么、为什么」见 `P0审计报告_2026-11-08.md`。
+完整证据、复现命令与「没做什么、为什么」见 `docs/methodology/P0审计报告_2026-11-08.md`。
 
 ---
 
@@ -205,10 +233,10 @@ node execution_simulator.js # 实盘：整手/最低佣金/T+1/订单明细
 
 | 新增 | 作用 |
 | :--- | :--- |
-| `metrics_v16.js` → `metrics_v16.json` | **关键指标唯一数据源**。四档 R→E 由引擎实跑，六种口径极差从 `phase5`/`phase6` 的 JSON 现算，全部带 sha256 快照。不存任何手填数字 |
-| `test_report_consistency.js` | 113 项断言：MD / HTML / README / 台账四份文档必须与数据源逐位一致，且不得再把已撤销措辞当成主张 |
+| `src/metrics_v16.js` → `data/derived/metrics_v16.json` | **关键指标唯一数据源**。四档 R→E 由引擎实跑，六种口径极差从 `phase5`/`phase6` 的 JSON 现算，全部带 sha256 快照。不存任何手填数字 |
+| `tests/test_report_consistency.js` | 113 项断言：MD / HTML / README / 台账四份文档必须与数据源逐位一致，且不得再把已撤销措辞当成主张 |
 
-`metrics_v16.js` 自带**反向自校验**：如果算出来的值与 v1.6 已发布值差 >0.0015，拒绝写盘并报错。也就是说，它不能悄悄改数。
+`src/metrics_v16.js` 自带**反向自校验**：如果算出来的值与 v1.6 已发布值差 >0.0015，拒绝写盘并报错。也就是说，它不能悄悄改数。
 
 一致性测试做了负向验证：改坏 5 种方式（删百分号 / 写回旧倍数 / 加空格 / 改一位小数 / 改台账表）**全部被抓到**。
 
@@ -216,9 +244,9 @@ node execution_simulator.js # 实盘：整手/最低佣金/T+1/订单明细
 
 ### 缺陷 2：没人能用文件名判断「谁是当前引擎」
 
-`bt_engine.js` 头部写着「回测引擎 v5：同步 v1.2 规则」，而当前策略是 v1.6。新增 `ENGINES.md` 权威登记表，并给 `bt_engine.js` 加了顶部横幅。
+`src/bt_engine.js` 头部写着「回测引擎 v5：同步 v1.2 规则」，而当前策略是 v1.6。新增 `docs/methodology/ENGINES.md` 权威登记表，并给 `src/bt_engine.js` 加了顶部横幅。
 
-**没有采纳「把历史引擎移进 `archive/`」**：`bt_engine.js` 被 `bt_data.js` / `bt_extended.js` / `probe_valuation.js` 三个仍在复现命令里的脚本 require，移走会让第一、二轮报告无法复现。问题的根源是「文件名不代表版本」，不是「目录不够整齐」。
+**没有采纳「把历史引擎移进 `archive/`」**：`src/bt_engine.js` 被 `src/bt_data.js` / `src/bt_extended.js` / `src/probe_valuation.js` 三个仍在复现命令里的脚本 require，移走会让第一、二轮报告无法复现。问题的根源是「文件名不代表版本」，不是「目录不够整齐」。
 
 新增单一入口 `run_all.js`：
 
@@ -235,7 +263,7 @@ node run_all.js --full   # 闸门 + 重跑主回测 / C 表 / 压力补跑 + 复
 
 新增：JSON 完整备份（含策略版本、参数快照、记录条数、最后净值与回撤）、导入前逐项校验（11 类非法输入直接拒收且**不改动现有数据**）、恢复前自动留底 + 一键撤销、每 6 小时一次本地自动快照。
 
-校验函数是纯函数，被 `test_ledger_v16.js` 覆盖：断言从 35 条增至 80 条（7 组）。
+校验函数是纯函数，被 `tests/test_ledger_v16.js` 覆盖：断言从 35 条增至 80 条（7 组）。
 
 ### 本轮验证结果
 
@@ -255,41 +283,41 @@ phase6_stress_v16.json 仅 meta.generated 时间戳变化（内容哈希已处�
 
 | 类别 | 文件 | 变更 |
 | --- | --- | --- |
-| 引擎 | `bt_engine.js` | 同步 v1.2 时间退出；风控改三级可升级、触发后不自动恢复；`timeRule` / `cycleEndMode` / `costMult` / `stageDrops` 开关 |
-| 数据 | `bt_data.js` → `bt_data.json` | 规则版本差异、2×2 归因、起点敏感性、不重叠窗口、参数 ±30% 网格、成本敏感性、block bootstrap |
-| 报告 | `opt_report.js` → `回测报告_修正版_2026-11-07.html` | 纯静态可离线打开 |
-| 配置 | `alloc_data.js` → `alloc_data.json` | 股息率从单一常数改为 2.5/3.5/4.5/5.5% 区间 |
-| 策略 / 归档 | `投资策略规划_v1.3.md`、`bt_engine_v1.1_archive.js` 等 | 双轨定位、敞口由 R 反推、旧口径可复现 |
+| 引擎 | `src/bt_engine.js` | 同步 v1.2 时间退出；风控改三级可升级、触发后不自动恢复；`timeRule` / `cycleEndMode` / `costMult` / `stageDrops` 开关 |
+| 数据 | `src/bt_data.js` → `data/derived/bt_data.json` | 规则版本差异、2×2 归因、起点敏感性、不重叠窗口、参数 ±30% 网格、成本敏感性、block bootstrap |
+| 报告 | `src/opt_report.js` → `reports/archive/回测报告_修正版_2026-11-07.html` | 纯静态可离线打开 |
+| 配置 | `src/alloc_data.js` → `data/derived/alloc_data.json` | 股息率从单一常数改为 2.5/3.5/4.5/5.5% 区间 |
+| 策略 / 归档 | `docs/strategy/archive/投资策略规划_v1.3.md`、`src/bt_engine_v1.1_archive.js` 等 | 双轨定位、敞口由 R 反推、旧口径可复现 |
 
 **第二轮（补齐验证空白 → v1.4）**
 
 | 类别 | 文件 | 变更 |
 | --- | --- | --- |
-| 数据 / 模块 | `valuation_semiannual_2010_2026.json`、`valuation_series.js` | NeoData 半年度 34 观测点插值；四维估值分与逐年股息率 |
-| 引擎 | `bt_engine.js` → v5 | `dySeries` / `vScore` / `useValuation` 开关，默认全关 |
-| 证伪 / 数据 / 报告 | `probe_valuation.js`、`bt_extended.js` → `extended_data.json`、`ext_report.js` | 估值证伪、3 条极端路径、4 折 walk-forward |
-| 策略 | `投资策略规划_v1.4.md` | 取消双轨制、真实股息率主口径、明确 R 非上限 |
+| 数据 / 模块 | `data/raw/valuation_semiannual_2010_2026.json`、`src/valuation_series.js` | NeoData 半年度 34 观测点插值；四维估值分与逐年股息率 |
+| 引擎 | `src/bt_engine.js` → v5 | `dySeries` / `vScore` / `useValuation` 开关，默认全关 |
+| 证伪 / 数据 / 报告 | `src/probe_valuation.js`、`src/bt_extended.js` → `data/derived/extended_data.json`、`src/ext_report.js` | 估值证伪、3 条极端路径、4 折 walk-forward |
+| 策略 | `docs/strategy/archive/投资策略规划_v1.4.md` | 取消双轨制、真实股息率主口径、明确 R 非上限 |
 
 **第三轮（最终方案独立审计 → v1.5）**
 
 | 类别 | 文件 | 变更 |
 | --- | --- | --- |
-| 引擎 | `bt_final.js` → `final_audit_data.json` | **独立于择时引擎**的常数敞口双资产引擎：修正 70/30 再平衡（frozen vs reset）、增益 bootstrap / 起点 / 窗口 / 分段 / 样本外、反事实、执行成本、分段现金利率、R 条款检验、相对重估复现，并**单列 75/25 最终执行口径**（`finalPlan`）与 70/30 审计口径（`v15Table`） |
-| 报告 | `final_report.js` → `回测报告_最终方案审计_2026-11-07.html` | 8 板块纯静态报告，无外部依赖；第 ①~⑦ 节为 70/30 审计口径，第 ⑧ 节为 75/25 执行口径 |
-| 团队 | `final_team_notes.json`、`deliverables/a-share/portfolio-health-final-plan-2026-11-07.md` | 四位 Phase 1 成员真实结论、误填更正记录、风险诊断师**重新收口**裁决与五位成员汇编 |
-| 策略 | `投资策略规划_v1.5.md` | **六条规则结构不变**；权益内配置 70/30 → **75/25 单点（主动硬上限 25%）**；修正再平衡实现、现金利率、取消估值/息差触发条件、R 条款定性；审计口径与执行口径分组披露，全部核心数字按新口径重算 |
+| 引擎 | `src/bt_final.js` → `data/derived/final_audit_data.json` | **独立于择时引擎**的常数敞口双资产引擎：修正 70/30 再平衡（frozen vs reset）、增益 bootstrap / 起点 / 窗口 / 分段 / 样本外、反事实、执行成本、分段现金利率、R 条款检验、相对重估复现，并**单列 75/25 最终执行口径**（`finalPlan`）与 70/30 审计口径（`v15Table`） |
+| 报告 | `src/final_report.js` → `reports/archive/回测报告_最终方案审计_2026-11-07.html` | 8 板块纯静态报告，无外部依赖；第 ①~⑦ 节为 70/30 审计口径，第 ⑧ 节为 75/25 执行口径 |
+| 团队 | `data/derived/final_team_notes.json`、`docs/decisions/portfolio-health-final-plan-2026-11-07.md` | 四位 Phase 1 成员真实结论、误填更正记录、风险诊断师**重新收口**裁决与五位成员汇编 |
+| 策略 | `docs/strategy/archive/投资策略规划_v1.5.md` | **六条规则结构不变**；权益内配置 70/30 → **75/25 单点（主动硬上限 25%）**；修正再平衡实现、现金利率、取消估值/息差触发条件、R 条款定性；审计口径与执行口径分组披露，全部核心数字按新口径重算 |
 
 **第四轮（第 5 条存废与尾部保护重构 → v1.6，2026-11-08）**
 
 | 类别 | 文件 | 变更 |
 | --- | --- | --- |
-| 数据基线 | `round4_phase2_baseline.md`、`phase2_baseline.js` → `phase2_baseline_data.json`、`phase2_indices.js` | 统一末点快照（HS300 4056.71 / 中证红利 5531.01）、单一数据源、q63 与 calQ 双口径、63 交易日的 64 个重置点定义 |
-| 脚手架 | `bt_r_clause.js` → `phase5_scaffold_check.json` | 动态触发状态机 + 17 个导出；`ETF_COST_GRID` 6 组成本档位、`UNMODELED_FRICTIONS` 6 项未建模摩擦、`PATHS` 四路径、`PREREGISTERED_MAIN_TEST`、`PHASE5_REPORT_LAYOUT`；V0 四档与 (iv) 逐位零偏差 |
-| 回测 | `phase5_run.js` → `phase5_backtest_data.json`、`phase5_sensitivity.js` | 三卡四路径全量回测 + C 表口径敏感性 **808 单元**（640+96+36+36）；压力日乘数、折溢价 4 象限、在途计息两档、换手赎回费、费率 4 档 |
-| 报告 | `round4_phase5_backtest.md`（516 行）、`回测报告_v1.6_2026-11-08.html` | 三表物理分离（A 触发事件 / B 策略绩效 / C 口径敏感性），每格 6 维口径标签；静态敞口 8 档完整权衡曲线；−105% 越界单元与静默 MDD=0 的数据质量披露 |
-| 策略 | `投资策略规划_v1.6.md` | **删除第 5 条触发式减半**（改为达 R 一次书面复核，不改敞口）；**R→E 表三档下调 5pp** 并新增「余量 ≥2.7pp」约束；撤回「按构造不触发」；新增无保护声明与披露等级上调；护栏 ③ 降级、② 增补、新增 ④ |
-| 编排 | `round4_lead_rulings.md`、`round4_phase1_notes.md`、`round4_phase3_quant.md` / `_dividend.md` / `_etf.md` / `_etf_interface.md`、`round4_phase4_candidates.md`（574 行） | 七条分歧终裁；四位成员 P1/P3 原文逐字存档；P4 三卡 + 定点补丁（成本科目分离、措辞纪律、未建模摩擦、跨除息日分红计入 nav） |
-| 补跑与勘误 | `phase6_stress_v16.js` → `phase6_stress_v16.json`、`phase6_stress_stdout.txt` | **补上证据缺口**：Phase 5 压力网格绑定 v1.5 旧表（30/40/50/55），与 v1.6 的 25/35/45/55 交集仅 55%，E=25/35/45 三档从未做过压力检验；本脚本先逐位复现原 36 单元（`maxAbsDiff=0`）再扩展。**修正两处实质错误**：① 无保护声明的「1.3~1.5 倍」实为 E=40% 的数、被挂到 E=55% 句上（真实 2.16~2.55 倍，最坏档物理越界）；② 口径极差 1.301pp 是简化口径日历单维差，主口径单维为 1.473pp、全网格+日历 2.692pp，「约 2 倍余量」撤销 |
+| 数据基线 | `docs/decisions/round4_phase2_baseline.md`、`src/phase2_baseline.js` → `data/processed/phase2_baseline_data.json`、`src/phase2_indices.js` | 统一末点快照（HS300 4056.71 / 中证红利 5531.01）、单一数据源、q63 与 calQ 双口径、63 交易日的 64 个重置点定义 |
+| 脚手架 | `src/bt_r_clause.js` → `data/derived/phase5_scaffold_check.json` | 动态触发状态机 + 17 个导出；`ETF_COST_GRID` 6 组成本档位、`UNMODELED_FRICTIONS` 6 项未建模摩擦、`PATHS` 四路径、`PREREGISTERED_MAIN_TEST`、`PHASE5_REPORT_LAYOUT`；V0 四档与 (iv) 逐位零偏差 |
+| 回测 | `src/phase5_run.js` → `data/processed/phase5_backtest_data.json`、`src/phase5_sensitivity.js` | 三卡四路径全量回测 + C 表口径敏感性 **808 单元**（640+96+36+36）；压力日乘数、折溢价 4 象限、在途计息两档、换手赎回费、费率 4 档 |
+| 报告 | `docs/decisions/round4_phase5_backtest.md`（516 行）、`reports/current/回测报告_v1.6_2026-11-08.html` | 三表物理分离（A 触发事件 / B 策略绩效 / C 口径敏感性），每格 6 维口径标签；静态敞口 8 档完整权衡曲线；−105% 越界单元与静默 MDD=0 的数据质量披露 |
+| 策略 | `docs/strategy/投资策略规划_v1.6.md` | **删除第 5 条触发式减半**（改为达 R 一次书面复核，不改敞口）；**R→E 表三档下调 5pp** 并新增「余量 ≥2.7pp」约束；撤回「按构造不触发」；新增无保护声明与披露等级上调；护栏 ③ 降级、② 增补、新增 ④ |
+| 编排 | `docs/decisions/round4_lead_rulings.md`、`docs/decisions/round4_phase1_notes.md`、`docs/decisions/round4_phase3_quant.md` / `_dividend.md` / `_etf.md` / `_etf_interface.md`、`docs/decisions/round4_phase4_candidates.md`（574 行） | 七条分歧终裁；四位成员 P1/P3 原文逐字存档；P4 三卡 + 定点补丁（成本科目分离、措辞纪律、未建模摩擦、跨除息日分红计入 nav） |
+| 补跑与勘误 | `src/phase6_stress_v16.js` → `data/derived/phase6_stress_v16.json`、`research/logs/phase6_stress_stdout.txt` | **补上证据缺口**：Phase 5 压力网格绑定 v1.5 旧表（30/40/50/55），与 v1.6 的 25/35/45/55 交集仅 55%，E=25/35/45 三档从未做过压力检验；本脚本先逐位复现原 36 单元（`maxAbsDiff=0`）再扩展。**修正两处实质错误**：① 无保护声明的「1.3~1.5 倍」实为 E=40% 的数、被挂到 E=55% 句上（真实 2.16~2.55 倍，最坏档物理越界）；② 口径极差 1.301pp 是简化口径日历单维差，主口径单维为 1.473pp、全网格+日历 2.692pp，「约 2 倍余量」撤销 |
 
 ---
 
@@ -305,7 +333,7 @@ phase6_stress_v16.json 仅 meta.generated 时间戳变化（内容哈希已处�
 - **成本科目必须分离**：`slippage` / `premiumShock` 属**价格偏移**，`market impact` 属**占 ADV 比例**，科目不同、禁止叠加。「10 万元冲击成本基本可忽略」须补两条限定：工具可得性不成立、冲击成本 ≠ 全部执行摩擦。
 - **三个 T+1 必须拆开**：回测 `execLag=1` / 场内交易制度 T+1 / 场外申赎确认与到账（赎回款 T+4~T+7）。E3 约束式：`effectiveLockDays ≥ 20 + settleLagDays + 1(申购确认) + (reviewLagDays − 20 超额部分)`，场外约 24~28+ 交易日。v1.6 因已删除第 5 条，E3 转为备查。
 - **口径极差大于名义余量**：v1.5 R→E 表在 R=15/20/25% 三档的余量（0.272 / 0.309 / 0.531pp）**全部小于主口径单维极差 1.473pp**（倍数 0.18× / 0.21× / 0.36×）。这是 v1.6 加「余量 ≥2.7pp」约束的唯一原因，也是「把拟合残差当安全垫」的直接证据。**六种极差算法的完整对照见 v1.6 §4.2**：单维 1.473pp / 单维+日历 2.315pp / 全 160 格 2.395pp / 全网格+日历 2.692pp。2.7pp 余量对前者是 1.88~2.18 倍，**对后者只有 1.03~1.19 倍**。
-- **R 会被突破多少（本轮补齐）**：压力路径显示，v1.6 推荐参数（R=20%/E=35%）在人工构造慢熊下 MDD 达 R 的 **1.17~1.41 倍**，在急跌型情景为 0.70~0.92 倍（守得住）；最高档 R=30%/E=55% 达 **2.16~2.55 倍**，最坏档名义跌幅 −105% **物理越界不可计算**。这三档 E（25/35/45）此前从未做过压力检验——Phase 5 网格绑定的是 v1.5 旧表，已由 `phase6_stress_v16.js` 补跑（先逐位复现原 36 单元、`maxAbsDiff=0`）。
+- **R 会被突破多少（本轮补齐）**：压力路径显示，v1.6 推荐参数（R=20%/E=35%）在人工构造慢熊下 MDD 达 R 的 **1.17~1.41 倍**，在急跌型情景为 0.70~0.92 倍（守得住）；最高档 R=30%/E=55% 达 **2.16~2.55 倍**，最坏档名义跌幅 −105% **物理越界不可计算**。这三档 E（25/35/45）此前从未做过压力检验——Phase 5 网格绑定的是 v1.5 旧表，已由 `src/phase6_stress_v16.js` 补跑（先逐位复现原 36 单元、`maxAbsDiff=0`）。
 - **样本与显著性**：全部结论来自同一样本；walk-forward 只有 4 折；配置倾斜的 bootstrap 95% 区间仍跨零，结论是「证据强度远高于择时层」而非「已证明显著为正」。
 - **相对重估是归因假说、双向证据均在案**：估值定价师主张 +0.48pp 约 67% 来自已兑现的一次性重估、建议降到 10~15%，本地逐位复现了折价与息差数据；但样本外第 4 折、反事实与全成本检验不支持由该归因推翻全部稳健性结论，故不采纳。见 v1.5 第 4.4 节与 HTML 报告第 ⑥ 节。
 - **权重 25% 不由回测给出**：回测只支持「有倾斜优于无倾斜」，也不支持任何具体数字；25% 是授权区间下沿 + 风险信号下的保守取值，不是优化结果。删除了 v1.4 用「怕行业集中」给 30% 兜底的理由（约束从未成立）。**75/25 与第 5 条存废相互独立，25% 不承担尾部保护职能**：2020-03 急性段测算显示，权益内全部调权自由度对账户层缓冲仅值 0.01~0.49pp，同期总敞口 E 变动值 3.22~8.70pp，量级差 3~176 倍。
@@ -316,7 +344,7 @@ phase6_stress_v16.json 仅 meta.generated 时间戳变化（内容哈希已处�
 - **股息率序列存在插值前视（第五轮审计 D2）**：半年度 34 点线性插值，区间内每日用到下一个观测点，最大偏离 2.154pp。无前视后 CAGR −0.006pp / MDD +0.057pp，R=20% 档余量降到 2.709pp（阈值 2.7pp，只差 0.009pp）。已提供开关，下一版切换。
 - **红利倾斜降低回撤这件事，全样本不成立（第五轮审计 E1）**：纯权益把红利从 0% 加到 100%，MDD 只从 46.27% 降到 45.66%（−0.61pp），年化却涨 3.64pp。全样本 MDD 由 2015 共同崩盘决定；防御性只在 2019-2026 风格分化段出现。v1.6 §2 已写「25% 不承担尾部保护职能」（正确），本审计补的是更强的一句：**连普通回撤也不降，倾斜的收益全部来自收益端**。权重保留，理由应改为「不押注单一因子」。
 - **季度再平衡是双面的（第五轮审计 E2）**：慢熊段（2021-02~2024-09）季度比年度 MDD 差 +0.81pp、收益差 0.15pp/年；全样本季度 MDD 最低（17.234% vs 年度 19.003%）。两个效应方向相反、量级都 <1pp。
-- **初始建仓未计交易成本**：一次性约 0.05%（≈0.003pp/年）未计入基线；`execution_simulator.js` 的实盘口径已计入。整手约束在 50 万账户下影响可忽略（CAGR −0.005pp、MDD +0.06pp）。
+- **初始建仓未计交易成本**：一次性约 0.05%（≈0.003pp/年）未计入基线；`src/execution_simulator.js` 的实盘口径已计入。整手约束在 50 万账户下影响可忽略（CAGR −0.005pp、MDD +0.06pp）。
 - **两份价格数据无溯源字段**：无 source / fetched / 复权口径，仅有 sha256 快照。出处需人工确认后补写，不代填。
 - **第三关仅剩一项**：12 周纸面执行未开始，是正式投入前唯一剩余关卡。
 
@@ -325,57 +353,57 @@ phase6_stress_v16.json 仅 meta.generated 时间戳变化（内容哈希已处�
 ## 文件说明
 
 **策略文档**：`投资策略规划_v1.0` ~ `v1.6.md`（**当前 v1.6**）
-**报告**：`P0审计报告_2026-11-08.md`（第五轮审计：7 处缺陷 + 3 项新证据）、`回测报告_v1.6_2026-11-08.html`、`回测报告_最终方案审计_2026-11-07.html`、`回测报告_扩展验证_2026-11-07.html`、`回测报告_修正版_2026-11-07.html`、`策略评估报告_2026-11-07.md`、`deliverables/a-share/portfolio-health-final-plan-2026-11-07.md`、以及 2026-11-06 的四份历史报告
-**数据**：`hs300_daily_2010_2026.json`（000300）、`csi_dividend_2010_2026.json`（000922）、`valuation_semiannual_2010_2026.json`、`bt_data.json` / `alloc_data.json` / `extended_data.json` / `final_audit_data.json` / `final_team_notes.json`、`phase2_baseline_data.json`、`phase5_backtest_data.json`、`phase5_scaffold_check.json`、`phase6_stress_v16.json`
-**引擎与构建脚本**：`bt_engine.js`（v5 择时引擎）、`bt_final.js`（第三轮常数敞口引擎）、`bt_r_clause.js`（第四轮触发状态机脚手架 + 成本敏感性登记）、`phase2_baseline.js` / `phase2_indices.js`、`phase5_run.js` / `phase5_sensitivity.js`、`phase6_stress_v16.js`（v1.6 新 R→E 表压力路径补跑 + 口径极差复核）、`bt_data.js` / `bt_report.js` / `opt_report.js`、`alloc_data.js` / `alloc_report.js`、`valuation_series.js` / `probe_valuation.js` / `bt_extended.js` / `ext_report.js`、`final_report.js`
-**审计与回归**：`data_audit.js`（11 项数据检查，硬错误拒绝出数）、`data_manifest.json`（三份输入数据 sha256 快照）、`test_regression.js` + `regression_baseline.json`（17 个用例的整条净值序列，容差 1e-9）、`metrics_v16.js` + `metrics_v16.json`（**关键指标唯一数据源**）、`test_report_consistency.js`（113 项断言，校验四份文档与数据源一致）、`run_all.js`（**单一验证入口，提交前必跑**）
-**架构说明**：`ENGINES.md`（引擎与脚本权威登记表：谁是当前入口、谁是历史、为什么不能删）
-**执行工具**：`纸面执行台账_v1.6.html`（自包含，无外部依赖）、`test_ledger_v16.js`（台账逻辑回归，6 组 35 断言）、`execution_simulator.js`（实盘执行模拟：整手 100 份 / 最低 5 元佣金 / T+1 / 订单明细 / 资金规模扫描）
-**编排记录**：`round4_lead_rulings.md`（第四轮裁决总表）、`round4_phase1_notes.md` / `_phase2_baseline.md` / `_phase3_quant.md` / `_phase3_dividend.md` / `_phase3_etf.md` / `_phase3_etf_interface.md` / `_phase4_candidates.md` / `_phase5_backtest.md`（成员原文逐字存档）
+**报告**：`docs/methodology/P0审计报告_2026-11-08.md`（第五轮审计：7 处缺陷 + 3 项新证据）、`reports/current/回测报告_v1.6_2026-11-08.html`、`reports/archive/回测报告_最终方案审计_2026-11-07.html`、`reports/archive/回测报告_扩展验证_2026-11-07.html`、`reports/archive/回测报告_修正版_2026-11-07.html`、`docs/methodology/策略评估报告_2026-11-07.md`、`docs/decisions/portfolio-health-final-plan-2026-11-07.md`、以及 2026-11-06 的四份历史报告
+**数据**：`data/raw/hs300_daily_2010_2026.json`（000300）、`data/raw/csi_dividend_2010_2026.json`（000922）、`data/raw/valuation_semiannual_2010_2026.json`、`data/derived/bt_data.json` / `data/derived/alloc_data.json` / `data/derived/extended_data.json` / `data/derived/final_audit_data.json` / `data/derived/final_team_notes.json`、`data/processed/phase2_baseline_data.json`、`data/processed/phase5_backtest_data.json`、`data/derived/phase5_scaffold_check.json`、`data/derived/phase6_stress_v16.json`
+**引擎与构建脚本**：`src/bt_engine.js`（v5 择时引擎）、`src/bt_final.js`（第三轮常数敞口引擎）、`src/bt_r_clause.js`（第四轮触发状态机脚手架 + 成本敏感性登记）、`src/phase2_baseline.js` / `src/phase2_indices.js`、`src/phase5_run.js` / `src/phase5_sensitivity.js`、`src/phase6_stress_v16.js`（v1.6 新 R→E 表压力路径补跑 + 口径极差复核）、`src/bt_data.js` / `src/bt_report.js` / `src/opt_report.js`、`src/alloc_data.js` / `src/alloc_report.js`、`src/valuation_series.js` / `src/probe_valuation.js` / `src/bt_extended.js` / `src/ext_report.js`、`src/final_report.js`
+**审计与回归**：`src/data_audit.js`（11 项数据检查，硬错误拒绝出数）、`data/derived/data_manifest.json`（三份输入数据 sha256 快照）、`tests/test_regression.js` + `data/derived/regression_baseline.json`（17 个用例的整条净值序列，容差 1e-9）、`src/metrics_v16.js` + `data/derived/metrics_v16.json`（**关键指标唯一数据源**）、`tests/test_report_consistency.js`（113 项断言，校验四份文档与数据源一致）、`run_all.js`（**单一验证入口，提交前必跑**）
+**架构说明**：`docs/methodology/ENGINES.md`（引擎与脚本权威登记表：谁是当前入口、谁是历史、为什么不能删）
+**执行工具**：`tools/paper-ledger/纸面执行台账_v1.6.html`（自包含，无外部依赖）、`tests/test_ledger_v16.js`（台账逻辑回归，6 组 35 断言）、`src/execution_simulator.js`（实盘执行模拟：整手 100 份 / 最低 5 元佣金 / T+1 / 订单明细 / 资金规模扫描）
+**编排记录**：`docs/decisions/round4_lead_rulings.md`（第四轮裁决总表）、`docs/decisions/round4_phase1_notes.md` / `_phase2_baseline.md` / `_phase3_quant.md` / `_phase3_dividend.md` / `_phase3_etf.md` / `_phase3_etf_interface.md` / `_phase4_candidates.md` / `_phase5_backtest.md`（成员原文逐字存档）
 
 重新生成报告：
 
 ```bash
 # 第一轮（v1.3 口径）
-node bt_engine.js
-node bt_data.js && node opt_report.js
-node bt_report.js
-node alloc_data.js && node alloc_report.js
+node src/bt_engine.js
+node src/bt_data.js && node src/opt_report.js
+node src/bt_report.js
+node src/alloc_data.js && node src/alloc_report.js
 
 # 第二轮（v1.4 证据）
-node valuation_series.js
-node probe_valuation.js
-node bt_extended.js && node ext_report.js
+node src/valuation_series.js
+node src/probe_valuation.js
+node src/bt_extended.js && node src/ext_report.js
 
 # 第三轮（v1.5 证据，勿与前后轮口径混用）
-node bt_final.js
-node final_report.js
+node src/bt_final.js
+node src/final_report.js
 
 # 第四轮（v1.6 证据，勿与前三轮口径混用）
-node bt_r_clause.js                       # 脚手架自检：V0 四档 + (iv) 逐位零偏差
-node phase2_baseline.js                   # 统一数据基线
-node phase5_run.js > phase5_backtest_stdout.txt 2>&1      # 三卡四路径全量回测
-node phase5_sensitivity.js >> phase5_backtest_stdout.txt 2>&1  # C 表 808 单元
+node src/bt_r_clause.js                       # 脚手架自检：V0 四档 + (iv) 逐位零偏差
+node src/phase2_baseline.js                   # 统一数据基线
+node src/phase5_run.js > phase5_backtest_stdout.txt 2>&1      # 三卡四路径全量回测
+node src/phase5_sensitivity.js >> phase5_backtest_stdout.txt 2>&1  # C 表 808 单元
 
 # 第四轮补跑（v1.6 新 R→E 表的压力路径 + 口径极差复核）
-node phase6_stress_v16.js                 # 先逐位复现原 36 单元，通过后才扩展
+node src/phase6_stress_v16.js                 # 先逐位复现原 36 单元，通过后才扩展
 
 # 纸面执行台账工具的回归测试
-node test_ledger_v16.js                    # 7 组 80 断言，含浮点边界 / 空行守卫 / 备份校验
+node tests/test_ledger_v16.js                    # 7 组 80 断言，含浮点边界 / 空行守卫 / 备份校验
 
 # 第六轮：提交前唯一必需命令（含上述全部闸门）
 node run_all.js                            # 5 道闸门，约 0.5 秒
 node run_all.js --full                     # 闸门 + 重跑主回测 / 压力补跑 + 复校验
 node run_all.js --verbose                  # 打印每道闸门的完整输出
-node test_report_consistency.js --negative # 负向自测：证明一致性测试真能抓到错
+node tests/test_report_consistency.js --negative # 负向自测：证明一致性测试真能抓到错
 
 # 第五轮：P0 审计（改任何代码前后都跑这三个）
-node data_audit.js                         # 数据闸门：11 项检查，hard fail 即 exit 1
-node test_regression.js                    # 回归：17 个用例整条净值序列，容差 1e-9
+node src/data_audit.js                         # 数据闸门：11 项检查，hard fail 即 exit 1
+node tests/test_regression.js                    # 回归：17 个用例整条净值序列，容差 1e-9
                                            #   不一致会指出用例 / 采样点 / 偏离量；确认正确后加 --update
-node execution_simulator.js                # 实盘：整手/最低佣金/T+1 + 资金规模扫描
-node execution_simulator.js --orders 2024  # 某一年的季度订单明细
-node execution_simulator.js --capital 300000 --eq 0.35
+node src/execution_simulator.js                # 实盘：整手/最低佣金/T+1 + 资金规模扫描
+node src/execution_simulator.js --orders 2024  # 某一年的季度订单明细
+node src/execution_simulator.js --capital 300000 --eq 0.35
 ```
 
 ---

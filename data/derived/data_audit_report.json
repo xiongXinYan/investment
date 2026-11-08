@@ -1,0 +1,192 @@
+{
+ "generatedAt": "2026-11-08T03:21:42.820Z",
+ "verdict": "PASS_WITH_WARNINGS",
+ "hardFailCount": 0,
+ "warnCount": 3,
+ "span": {
+  "N": 4089,
+  "calYears": 16.8378,
+  "daysPerYear": 242.85,
+  "start": "2010-01-04",
+  "end": "2026-11-06"
+ },
+ "checks": [
+  {
+   "id": "1.rows.length",
+   "level": "hard",
+   "pass": true,
+   "detail": "沪深300 4089 行 / 中证红利 4089 行",
+   "metrics": {
+    "hs300": 4089,
+    "dividend": 4089
+   }
+  },
+  {
+   "id": "1.rows.align",
+   "level": "hard",
+   "pass": true,
+   "detail": "两指数日期逐一相等（按索引对齐的前提成立）",
+   "metrics": {
+    "mismatch": 0,
+    "examples": []
+   }
+  },
+  {
+   "id": "2.date.unique",
+   "level": "hard",
+   "pass": true,
+   "detail": "重复日期 0 个",
+   "metrics": {
+    "duplicate": 0
+   }
+  },
+  {
+   "id": "2.date.monotonic",
+   "level": "hard",
+   "pass": true,
+   "detail": "逆序日期 0 个",
+   "metrics": {
+    "nonMonotonic": 0
+   }
+  },
+  {
+   "id": "3.gap.max",
+   "level": "warn",
+   "pass": true,
+   "detail": "最大间隔 11 个自然日（春节/国庆长假量级，无缺失交易日迹象）",
+   "metrics": {
+    "maxGapDays": 11,
+    "distribution": {
+     "1": 3222,
+     "2": 4,
+     "3": 753,
+     "4": 40,
+     "5": 22,
+     "6": 13,
+     "8": 14,
+     "9": 3,
+     "10": 13,
+     "11": 4
+    },
+    "suspicious": []
+   }
+  },
+  {
+   "id": "4.price.valid",
+   "level": "hard",
+   "pass": true,
+   "detail": "非正/非有限价格 0 个",
+   "metrics": {
+    "invalid": 0
+   }
+  },
+  {
+   "id": "5.return.jump",
+   "level": "warn",
+   "pass": true,
+   "detail": "无 |单日涨跌| > 9% 的记录（指数级别正常）",
+   "metrics": {
+    "threshold": 0.09,
+    "count": 0,
+    "examples": []
+   }
+  },
+  {
+   "id": "6.series.independent",
+   "level": "hard",
+   "pass": true,
+   "detail": "两指数日收益相关系数 0.8775，逐日完全相同 0 天 / 4088（独立序列，非复制）",
+   "metrics": {
+    "corr": 0.8775,
+    "identicalDays": 0
+   }
+  },
+  {
+   "id": "7.dy.range",
+   "level": "hard",
+   "pass": true,
+   "detail": "股息率范围 1.23% ~ 6.53%，非有限或负值 0 个",
+   "metrics": {
+    "min": 1.23,
+    "max": 6.53,
+    "invalid": 0,
+    "lenH": 4089,
+    "lenL": 4089
+   }
+  },
+  {
+   "id": "7.dy.observation",
+   "level": "warn",
+   "pass": true,
+   "detail": "估值观测 34 个点，区间内覆盖 117~4088，区间外推 117 个交易日（占 2.86%）",
+   "metrics": {
+    "observations": 34,
+    "firstIdx": 117,
+    "lastIdx": 4088,
+    "extrapolatedDays": 117
+   }
+  },
+  {
+   "id": "7.dy.lookahead",
+   "level": "warn",
+   "pass": false,
+   "detail": "当前 dy 序列为「半年度观测线性插值」，在区间内每一日都用到下一个观测点（未来信息）；受影响交易日 4088，与「仅用已发生观测」的最大偏离 2.154pp。已提供无前视开关（V.noLookahead），影响量级见审计报告。",
+   "metrics": {
+    "lookaheadDays": 4088,
+    "maxDeviationPP": 2.154,
+    "noLookaheadAvailable": false
+   }
+  },
+  {
+   "id": "8.caliber.declared",
+   "level": "warn",
+   "pass": false,
+   "detail": "两个价格文件（hs300_daily_2010_2026.json / csi_dividend_2010_2026.json）无 source / fetched / 复权口径 字段；代码注释声明为「价格指数（不含股息）」，需人工确认后写入 data_manifest。估值文件 source=\"NeoData index_valuation（000300.SH / 000922.SH）\"，fetched=\"2026-11-07\"",
+   "metrics": {
+    "hs300Meta": null,
+    "dividendMeta": null,
+    "valuationSource": "NeoData index_valuation（000300.SH / 000922.SH）",
+    "valuationFetched": "2026-11-07"
+   }
+  },
+  {
+   "id": "9.annualization",
+   "level": "warn",
+   "pass": false,
+   "detail": "每年交易日实测 242.85（跨度 16.84 年 / 4089 个交易日）。用 252 做年化分母会把年化收益高估约 3.77%。本仓库历史报告均为 252 口径，须并列披露日历年化值。",
+   "metrics": {
+    "tradingDays": 4089,
+    "calendarYears": 16.8378,
+    "daysPerYear": 242.85,
+    "overstatementPct": 3.77
+   }
+  },
+  {
+   "id": "10.sample",
+   "level": "info",
+   "pass": true,
+   "detail": "样本跨度 16.8 年，含 3 个 ≥15% 的回撤区间",
+   "metrics": {
+    "years": 16.8,
+    "drawdownEpisodes": 3
+   }
+  }
+ ],
+ "files": {
+  "hs300": {
+   "file": "hs300_daily_2010_2026.json",
+   "bytes": 85986,
+   "sha256": "21b06477402d34c9740be1454a9c7638080030b14777fb27178892999b4cb9a2"
+  },
+  "dividend": {
+   "file": "csi_dividend_2010_2026.json",
+   "bytes": 85986,
+   "sha256": "abd331c7c487943bb71783cd0c0c0cd00f207e5f689eff36d86fd00137c8ea08"
+  },
+  "valuation": {
+   "file": "valuation_semiannual_2010_2026.json",
+   "bytes": 4063,
+   "sha256": "1542db07228da6481823a72bc2e6c65723328c255fc6ce0d8bfa7aea49aa76d5"
+  }
+ }
+}

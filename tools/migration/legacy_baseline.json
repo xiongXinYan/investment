@@ -1,0 +1,33 @@
+{
+ "schema": "legacy-output-baseline/v1",
+ "capturedAt": "2026-11-08",
+ "capturedFrom": "迁移前的仓库根目录（11 个脚本各跑两遍，输出逐字节稳定）",
+ "purpose": "历史脚本迁移后必须重跑并复现这些哈希。任何一个不相等 = 迁移动了计算，不是搬家。",
+ "note": "回测报告_卖出规则_2026-11-06.html 由 bt_report.js 生成；它同时是历史证据，重跑会覆盖同名文件，但内容必须逐字节相同。",
+ "scripts": [
+  "bt_data.js",
+  "bt_extended.js",
+  "probe_valuation.js",
+  "bt_report.js",
+  "opt_report.js",
+  "ext_report.js",
+  "alloc_data.js",
+  "alloc_report.js",
+  "final_report.js",
+  "bt_final.js",
+  "phase2_baseline.js"
+ ],
+ "outputs": {
+  "bt_data.json": "f99436e2ff6ea573e3f4b1205ec57fa2c1a57b7332fd0711702b8f588e5c6067",
+  "extended_data.json": "515d8fc5c493f0e0e7f7cef744f6e01b64ea0a1e2db144817b6d1276e497bb10",
+  "final_team_notes.json": "9c96a6ae7780a4330c7c9e69c69aa57f8dc7f5ee93b2da69031f776a308e0730",
+  "回测报告_卖出规则_2026-11-06.html": "e8fde64be1dd3be46930b6f9c5c63117932b610cc8c463110e1d328e2d875073",
+  "回测报告_修正版_2026-11-07.html": "2c85d9f570f075732c6825dac365c20915f7f5e7c75ee2876d5bd662c0cb5076",
+  "回测报告_扩展验证_2026-11-07.html": "e3537970292b95d3d55e6309165d0a9d0b170d1985f62fe5bcb3750bf9f59564",
+  "alloc_data.json": "67b207e040625d0d258161c167fdfbf2814e905276aff199b244751e206c61a0",
+  "配置调整报告_v1.2.html": "e082ba0c0c6292757a8a2d2e50f4b0bfe41560997784a7a74d7ef613e7741bb6",
+  "回测报告_最终方案审计_2026-11-07.html": "1407010836bca469e33d371991daefddb147fcb1f61eae03d9d1e6c0ea1f7dd9",
+  "final_audit_data.json": "c2c18efd8e3f60600b11f6b97ece1347f3a97f9a2f64fdd0a35d2a4e74238033",
+  "phase2_baseline_data.json": "e2bb6153aa58c2cf14653918c5d544e4b2036e7dc930f2166b33c0dc5ebbc07f"
+ }
+}

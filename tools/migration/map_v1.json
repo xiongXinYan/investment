@@ -1,0 +1,523 @@
+{
+ "schema": "migration-map/v1",
+ "generatedAt": "2026-11-08",
+ "note": "逐文件迁移登记表。from 为仓库根相对路径，to 为迁移后相对路径。apply_v1.js 只读本表执行。",
+ "stay": [
+  {
+   "path": "README.md",
+   "reason": "仓库入口，必须在根"
+  },
+  {
+   "path": "package.json",
+   "reason": "npm 入口，必须在根"
+  },
+  {
+   "path": ".gitignore",
+   "reason": "git 配置，必须在根"
+  },
+  {
+   "path": "run_all.js",
+   "reason": "唯一验证入口，留在根 = 任何人在任何位置都能 node run_all.js"
+  },
+  {
+   "path": "config/strategy/v1.6.json",
+   "reason": "策略配置登记，已在正式位置"
+  },
+  {
+   "path": "config/verify_config.js",
+   "reason": "配置断言，与配置同目录"
+  },
+  {
+   "path": "lib/paths.js",
+   "reason": "路径登记表。留在根侧，src/ 与 tests/ 都用 ../lib 引用"
+  },
+  {
+   "path": "lib/canonical.js",
+   "reason": "哈希工具，被 src/ 与根侧脚本共用"
+  }
+ ],
+ "ignore": [
+  {
+   "pattern": ".idea/",
+   "reason": "IDE 个人工作区配置，已从索引移除并加入 .gitignore"
+  },
+  {
+   "pattern": ".bak_* / .tmp_*",
+   "reason": "临时排查残留，加入 .gitignore，不迁移不删除"
+  },
+  {
+   "pattern": ".workbuddy/",
+   "reason": "会话记忆，不属于策略内容"
+  }
+ ],
+ "entries": [
+  {
+   "from": "hs300_daily_2010_2026.json",
+   "to": "data/raw/hs300_daily_2010_2026.json",
+   "action": "keep",
+   "reason": "原始数据，只读不改。回测结论的地基，任何变动都必须重新出数（data_audit 会算 sha256）"
+  },
+  {
+   "from": "csi_dividend_2010_2026.json",
+   "to": "data/raw/csi_dividend_2010_2026.json",
+   "action": "keep",
+   "reason": "原始数据，只读不改。回测结论的地基，任何变动都必须重新出数（data_audit 会算 sha256）"
+  },
+  {
+   "from": "valuation_semiannual_2010_2026.json",
+   "to": "data/raw/valuation_semiannual_2010_2026.json",
+   "action": "keep",
+   "reason": "原始数据，只读不改。回测结论的地基，任何变动都必须重新出数（data_audit 会算 sha256）"
+  },
+  {
+   "from": "phase2_baseline_data.json",
+   "to": "data/processed/phase2_baseline_data.json",
+   "action": "keep",
+   "reason": "清洗/对齐后的回测中间数据。可由脚本重算，但重算成本高，入库便于对账"
+  },
+  {
+   "from": "phase5_backtest_data.json",
+   "to": "data/processed/phase5_backtest_data.json",
+   "action": "keep",
+   "reason": "清洗/对齐后的回测中间数据。可由脚本重算，但重算成本高，入库便于对账"
+  },
+  {
+   "from": "bt_data.json",
+   "to": "data/derived/bt_data.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "bt_data_v1.1_archive.json",
+   "to": "data/derived/bt_data_v1.1_archive.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "extended_data.json",
+   "to": "data/derived/extended_data.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "final_audit_data.json",
+   "to": "data/derived/final_audit_data.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "alloc_data.json",
+   "to": "data/derived/alloc_data.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "metrics_v16.json",
+   "to": "data/derived/metrics_v16.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "phase6_stress_v16.json",
+   "to": "data/derived/phase6_stress_v16.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "data_audit_report.json",
+   "to": "data/derived/data_audit_report.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "data_manifest.json",
+   "to": "data/derived/data_manifest.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "regression_baseline.json",
+   "to": "data/derived/regression_baseline.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "final_team_notes.json",
+   "to": "data/derived/final_team_notes.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "phase5_scaffold_check.json",
+   "to": "data/derived/phase5_scaffold_check.json",
+   "action": "keep",
+   "reason": "派生结果：指标、压力、审计报告、回归基线。不是输入，禁止当数据源二次引用"
+  },
+  {
+   "from": "回测报告_v1.6_2026-11-08.html",
+   "to": "reports/current/回测报告_v1.6_2026-11-08.html",
+   "action": "keep",
+   "reason": "当前正式报告。只应由代码生成，禁止手改数字"
+  },
+  {
+   "from": "回测报告_2010-2026.html",
+   "to": "reports/archive/回测报告_2010-2026.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "回测报告_卖出规则_2026-11-06.html",
+   "to": "reports/archive/回测报告_卖出规则_2026-11-06.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "回测报告_卖出规则_2026-11-06_v1.1口径.html",
+   "to": "reports/archive/回测报告_卖出规则_2026-11-06_v1.1口径.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "回测报告_修正版_2026-11-07.html",
+   "to": "reports/archive/回测报告_修正版_2026-11-07.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "回测报告_扩展验证_2026-11-07.html",
+   "to": "reports/archive/回测报告_扩展验证_2026-11-07.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "回测报告_最终方案审计_2026-11-07.html",
+   "to": "reports/archive/回测报告_最终方案审计_2026-11-07.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "策略审计报告_v1.0_20261106.html",
+   "to": "reports/archive/策略审计报告_v1.0_20261106.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "配置调整报告_v1.2.html",
+   "to": "reports/archive/配置调整报告_v1.2.html",
+   "action": "archive",
+   "reason": "历史轮次报告。作为证据保留，口径与 v1.6 不可比，不得与当前报告并列引用"
+  },
+  {
+   "from": "纸面执行台账_v1.6.html",
+   "to": "tools/paper-ledger/纸面执行台账_v1.6.html",
+   "action": "keep",
+   "reason": "12 周纸面执行工具，自包含单文件，是执行层入口不是报告"
+  },
+  {
+   "from": "投资策略规划_v1.6.md",
+   "to": "docs/strategy/投资策略规划_v1.6.md",
+   "action": "keep",
+   "reason": "当前正式策略文档（唯一权威规则文本）"
+  },
+  {
+   "from": "投资策略规划_v1.0.md",
+   "to": "docs/strategy/archive/投资策略规划_v1.0.md",
+   "action": "archive",
+   "reason": "历史策略版本。用户铁律：一律不改内容，只归档"
+  },
+  {
+   "from": "投资策略规划_v1.1.md",
+   "to": "docs/strategy/archive/投资策略规划_v1.1.md",
+   "action": "archive",
+   "reason": "历史策略版本。用户铁律：一律不改内容，只归档"
+  },
+  {
+   "from": "投资策略规划_v1.2.md",
+   "to": "docs/strategy/archive/投资策略规划_v1.2.md",
+   "action": "archive",
+   "reason": "历史策略版本。用户铁律：一律不改内容，只归档"
+  },
+  {
+   "from": "投资策略规划_v1.3.md",
+   "to": "docs/strategy/archive/投资策略规划_v1.3.md",
+   "action": "archive",
+   "reason": "历史策略版本。用户铁律：一律不改内容，只归档"
+  },
+  {
+   "from": "投资策略规划_v1.4.md",
+   "to": "docs/strategy/archive/投资策略规划_v1.4.md",
+   "action": "archive",
+   "reason": "历史策略版本。用户铁律：一律不改内容，只归档"
+  },
+  {
+   "from": "投资策略规划_v1.5.md",
+   "to": "docs/strategy/archive/投资策略规划_v1.5.md",
+   "action": "archive",
+   "reason": "历史策略版本。用户铁律：一律不改内容，只归档"
+  },
+  {
+   "from": "ENGINES.md",
+   "to": "docs/methodology/ENGINES.md",
+   "action": "keep",
+   "reason": "方法与审计：哪个脚本权威、数据怎么审计、口径怎么定义"
+  },
+  {
+   "from": "P0审计报告_2026-11-08.md",
+   "to": "docs/methodology/P0审计报告_2026-11-08.md",
+   "action": "keep",
+   "reason": "方法与审计：哪个脚本权威、数据怎么审计、口径怎么定义"
+  },
+  {
+   "from": "策略评估报告_2026-11-07.md",
+   "to": "docs/methodology/策略评估报告_2026-11-07.md",
+   "action": "keep",
+   "reason": "方法与审计：哪个脚本权威、数据怎么审计、口径怎么定义"
+  },
+  {
+   "from": "round4_lead_rulings.md",
+   "to": "docs/decisions/round4_lead_rulings.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase1_notes.md",
+   "to": "docs/decisions/round4_phase1_notes.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase2_baseline.md",
+   "to": "docs/decisions/round4_phase2_baseline.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase3_dividend.md",
+   "to": "docs/decisions/round4_phase3_dividend.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase3_etf.md",
+   "to": "docs/decisions/round4_phase3_etf.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase3_etf_interface.md",
+   "to": "docs/decisions/round4_phase3_etf_interface.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase3_quant.md",
+   "to": "docs/decisions/round4_phase3_quant.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase4_candidates.md",
+   "to": "docs/decisions/round4_phase4_candidates.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "round4_phase5_backtest.md",
+   "to": "docs/decisions/round4_phase5_backtest.md",
+   "action": "keep",
+   "reason": "第四轮研究过程与裁决：结论的来源。研究记录 ≠ 正式规则，需分开存放"
+  },
+  {
+   "from": "phase2_probe_stdout.txt",
+   "to": "research/logs/phase2_probe_stdout.txt",
+   "action": "keep",
+   "reason": "实验运行日志。属于过程证据，不属于源码"
+  },
+  {
+   "from": "phase5_backtest_stdout.txt",
+   "to": "research/logs/phase5_backtest_stdout.txt",
+   "action": "keep",
+   "reason": "实验运行日志。属于过程证据，不属于源码"
+  },
+  {
+   "from": "phase5_scaffold_stdout.txt",
+   "to": "research/logs/phase5_scaffold_stdout.txt",
+   "action": "keep",
+   "reason": "实验运行日志。属于过程证据，不属于源码"
+  },
+  {
+   "from": "phase6_stress_stdout.txt",
+   "to": "research/logs/phase6_stress_stdout.txt",
+   "action": "keep",
+   "reason": "实验运行日志。属于过程证据，不属于源码"
+  },
+  {
+   "from": "test_ledger_v16.js",
+   "to": "tests/test_ledger_v16.js",
+   "action": "keep",
+   "reason": "测试与业务代码分离；tests 只被 run_all 调用，不被业务 require"
+  },
+  {
+   "from": "test_regression.js",
+   "to": "tests/test_regression.js",
+   "action": "keep",
+   "reason": "测试与业务代码分离；tests 只被 run_all 调用，不被业务 require"
+  },
+  {
+   "from": "test_report_consistency.js",
+   "to": "tests/test_report_consistency.js",
+   "action": "keep",
+   "reason": "测试与业务代码分离；tests 只被 run_all 调用，不被业务 require"
+  },
+  {
+   "from": "deliverables/a-share/portfolio-health-final-plan-2026-11-07.md",
+   "to": "docs/decisions/portfolio-health-final-plan-2026-11-07.md",
+   "action": "keep",
+   "reason": "交付件正文，本质是决策记录。避免与 reports/ 形成第二套报告体系"
+  },
+  {
+   "from": "alloc_data.js",
+   "to": "src/alloc_data.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "alloc_report.js",
+   "to": "src/alloc_report.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "bt_data.js",
+   "to": "src/bt_data.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "bt_engine.js",
+   "to": "src/bt_engine.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "bt_engine_v1.1_archive.js",
+   "to": "src/bt_engine_v1.1_archive.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "bt_extended.js",
+   "to": "src/bt_extended.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "bt_final.js",
+   "to": "src/bt_final.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "bt_r_clause.js",
+   "to": "src/bt_r_clause.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "bt_report.js",
+   "to": "src/bt_report.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "data_audit.js",
+   "to": "src/data_audit.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "execution_simulator.js",
+   "to": "src/execution_simulator.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "ext_report.js",
+   "to": "src/ext_report.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "final_report.js",
+   "to": "src/final_report.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "manifest.js",
+   "to": "src/manifest.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "metrics_v16.js",
+   "to": "src/metrics_v16.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "opt_report.js",
+   "to": "src/opt_report.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "phase2_baseline.js",
+   "to": "src/phase2_baseline.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "phase2_indices.js",
+   "to": "src/phase2_indices.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "phase3_quant_probe.js",
+   "to": "src/phase3_quant_probe.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "phase5_run.js",
+   "to": "src/phase5_run.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "phase5_sensitivity.js",
+   "to": "src/phase5_sensitivity.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "phase6_stress_v16.js",
+   "to": "src/phase6_stress_v16.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  },
+  {
+   "from": "probe_valuation.js",
+   "to": "src/probe_valuation.js",
+   "action": "archive",
+   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+  },
+  {
+   "from": "valuation_series.js",
+   "to": "src/valuation_series.js",
+   "action": "keep",
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+  }
+ ]
+}

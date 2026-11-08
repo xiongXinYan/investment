@@ -1,0 +1,101 @@
+{
+ "schema": "backtest-manifest/v1",
+ "strategyVersion": "1.6",
+ "reportVersion": "1.6",
+ "status": "paper-execution-pending",
+ "config": {
+  "file": "config/strategy/v1.6.json",
+  "sha256": "ba2c8e0c414d145b420a3913419dc0bd93ca0a45bac9a1b65ddc7e18c25b9089",
+  "canonicalHash": "b37e20ec80d4ec6ea18b149a15bd2627964ec4658d88cc3c6d39749444c94b54",
+  "note": "canonicalHash 与书写顺序/缩进无关；sha256 是文件字节指纹。两者都记，避免「只改了空格也算变更」的误判。"
+ },
+ "engine": {
+  "files": [
+   "phase2_indices.js",
+   "bt_r_clause.js",
+   "valuation_series.js"
+  ],
+  "hash": "353ed71fde7f0901c13ef1bf2dd30b39a56112685d4882d1a6ab83434f640432"
+ },
+ "pipeline": {
+  "files": [
+   "phase5_run.js",
+   "phase5_sensitivity.js",
+   "phase6_stress_v16.js",
+   "metrics_v16.js"
+  ],
+  "hash": "70284e20f9896221906eed8647d06d030d7b433d0f8818cc2137584812d56cdc"
+ },
+ "data": {
+  "files": [
+   {
+    "file": "hs300_daily_2010_2026.json",
+    "role": "raw:沪深300日线",
+    "bytes": 85986,
+    "sha256": "21b06477402d34c9740be1454a9c7638080030b14777fb27178892999b4cb9a2"
+   },
+   {
+    "file": "csi_dividend_2010_2026.json",
+    "role": "raw:中证红利日线",
+    "bytes": 85986,
+    "sha256": "abd331c7c487943bb71783cd0c0c0cd00f207e5f689eff36d86fd00137c8ea08"
+   },
+   {
+    "file": "valuation_semiannual_2010_2026.json",
+    "role": "raw:半年度股息率",
+    "bytes": 4063,
+    "sha256": "1542db07228da6481823a72bc2e6c65723328c255fc6ce0d8bfa7aea49aa76d5"
+   }
+  ],
+  "hash": "14fe1eb82cea738e39a4a647b87ec7f6a5d13d479409e2e120189a2adfa28a61"
+ },
+ "outputs": [
+  {
+   "file": "phase5_backtest_data.json",
+   "bytes": 109150,
+   "sha256": "d0bdf3fdd6efa8a8709102ecaa12fa2d0d52ad10a6bd30bd6809f582cb3e383d",
+   "contentHash": "4781b25cf8c10c3fec2bc7e34ce08d0c4851a96672404d35196f183e103a22d8",
+   "contentHashExclude": [],
+   "note": "内容哈希排除时间戳字段，是数值是否变化的唯一判据"
+  },
+  {
+   "file": "phase6_stress_v16.json",
+   "bytes": 27357,
+   "sha256": "c63b2d65576d486c6509f51c27ae8b5c5f4a5f9cf54d74785a7b5b7d29db9567",
+   "contentHash": "73bd5ca9e74665ef35608924b7756d96f063384fa67eb47cdb16633dcfcd1bb4",
+   "contentHashExclude": [
+    "meta.generated"
+   ],
+   "note": "内容哈希排除时间戳字段，是数值是否变化的唯一判据"
+  },
+  {
+   "file": "metrics_v16.json",
+   "bytes": 7501,
+   "sha256": "9b94c1cd445341ba5a0e751dd768bf464f58d3971da1d2912a33f5da76746e38",
+   "contentHash": "07483450672dcf25cd92f6c4762c4cea275a4c28030d4bd572a9383c13755696",
+   "contentHashExclude": [
+    "meta.generatedAt"
+   ],
+   "note": "内容哈希排除时间戳字段，是数值是否变化的唯一判据"
+  },
+  {
+   "file": "regression_baseline.json",
+   "bytes": 28157,
+   "sha256": "788fb4f99f5837dcb89a7d67957746cb4a869c7178920d4c641f6686ff379a38"
+  }
+ ],
+ "git": {
+  "commit": "a923bf5ef901487a7651481fb7890946c36f5c42",
+  "commitShort": "a923bf5",
+  "branch": "main",
+  "dirty": true,
+  "dirtyFiles": [
+   "branch main",
+   "r branch is up to date with 'origin/main'.",
+   "hing to commit, working tree clean"
+  ]
+ },
+ "reproduce": "node run_all.js --full",
+ "generatedAt": "2026-11-08T03:21:43.514Z",
+ "honesty": "git.dirty=true 时本指纹只描述「工作区当前状态」，不是任何已发布版本。发布前必须 commit 后重跑。"
+}
