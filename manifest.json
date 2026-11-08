@@ -71,7 +71,7 @@
   {
    "file": "metrics_v16.json",
    "bytes": 7501,
-   "sha256": "b8078de6acfd175846dd4474b3fcfd11b2b13bdd257f57a91305ccd73e2036f6",
+   "sha256": "a7bc6195c2ce227ebf1742053fef233209b25d937e3801aac879924936760671",
    "contentHash": "07483450672dcf25cd92f6c4762c4cea275a4c28030d4bd572a9383c13755696",
    "contentHashExclude": [
     "meta.generatedAt"
@@ -85,8 +85,8 @@
   }
  ],
  "git": {
-  "commit": "38f4c1776e6cf765ef04fe586ef4710a49e6087d",
-  "commitShort": "38f4c17",
+  "commit": "459b2f929454b5395c86a26661643e7afcc737f7",
+  "commitShort": "459b2f9",
   "branch": "main",
   "dirty": false,
   "dirtyFiles": [],
@@ -94,6 +94,6 @@
   "dirtyNote": "dirty 只看输入（代码/配置/文档/数据）；dirtyGenerated 是重跑闸门产生的时间戳差异，不影响可复现性"
  },
  "reproduce": "node run_all.js --full",
- "generatedAt": "2026-11-08T03:42:01.360Z",
+ "generatedAt": "2026-11-08T03:42:07.373Z",
  "honesty": "git.dirty=true 时本指纹只描述「工作区当前状态」，不是任何已发布版本。发布前必须 commit 后重跑。"
 }
