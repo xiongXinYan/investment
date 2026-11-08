@@ -85,20 +85,15 @@
   }
  ],
  "git": {
-  "commit": "f1f64d58788f66d14cc85912f289c4bf5085e059",
-  "commitShort": "f1f64d5",
+  "commit": "cae4fc5def90f445b79c03816ec4fd2b1035390d",
+  "commitShort": "cae4fc5",
   "branch": "main",
-  "dirty": true,
-  "dirtyFiles": [
-   "branch main",
-   "r branch is ahead of 'origin/main' by 5 commits.",
-   "use \"git push\" to publish your local commits)",
-   "hing to commit, working tree clean"
-  ],
+  "dirty": false,
+  "dirtyFiles": [],
   "dirtyGenerated": [],
   "dirtyNote": "dirty 只看输入（代码/配置/文档/数据）；dirtyGenerated 是重跑闸门产生的时间戳差异，不影响可复现性"
  },
  "reproduce": "node run_all.js --full",
- "generatedAt": "2026-11-08T03:22:48.135Z",
+ "generatedAt": "2026-11-08T03:23:12.083Z",
  "honesty": "git.dirty=true 时本指纹只描述「工作区当前状态」，不是任何已发布版本。发布前必须 commit 后重跑。"
 }
