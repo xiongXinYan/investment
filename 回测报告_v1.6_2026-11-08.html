@@ -104,7 +104,7 @@ hr.soft{border:0;border-top:1px dashed var(--line2);margin:28px 0}
 <!-- ============ 0 核心结论 ============ -->
 <div class="hero">
   <div class="big">在预注册主口径下，第 5 条<b>触发 0 次</b>，三条含条款路径逐位恒等，触发式净效应<b>不可评估（not estimable）</b>——既不构成「有效」的证据，也不构成「无效」的证据。</div>
-  <div class="sub">可报告的只有两件事：① 纯静态降 E 效应可估计（E 40%→20%：MDD −9.945pp、年化 −0.497pp）；② 「按构造不触发」不成立，应改写为「<b>边界敏感、非结构性免疫</b>」——主口径余量仅 0.309pp，而口径极差 1.301pp，是其 4.21 倍。</div>
+  <div class="sub">可报告的只有两件事：① 纯静态降 E 效应可估计（E 40%→20%：MDD −9.945pp、年化 −0.497pp）；② 「按构造不触发」不成立，应改写为「<b>边界敏感、非结构性免疫</b>」——主口径余量仅 0.309pp，而主口径单维极差 1.473pp、全网格含日历 2.692pp，分别是其 4.8 倍与 8.7 倍。</div>
 </div>
 
 <div class="grid2">
@@ -114,14 +114,14 @@ hr.soft{border:0;border-top:1px dashed var(--line2);margin:28px 0}
     <div class="d">MDD 19.691% vs R 20% · 已用掉预算 98.5%</div>
   </div>
   <div class="kpi">
-    <div class="k">口径极差 / 余量</div>
-    <div class="v" style="color:var(--risk)">4.21 ×</div>
-    <div class="d">1.301pp ÷ 0.309pp · 换一个同样合理的口径即突破 R</div>
+    <div class="k">口径极差（单维 / 全网格）</div>
+    <div class="v" style="color:var(--risk)">1.473 / 2.692 pp</div>
+    <div class="d">单维极差 1.473pp 已是余量 0.309pp 的 4.8 倍</div>
   </div>
   <div class="kpi">
     <div class="k">v1.6 修订后（R=20%，E=35%）</div>
     <div class="v" style="color:var(--ok)">2.766 pp</div>
-    <div class="d">MDD 17.234% · 余量为口径极差的 2.13 倍</div>
+    <div class="d">MDD 17.234% · 对单维极差 1.88 倍，对全网格仅 1.03 倍</div>
   </div>
   <div class="kpi">
     <div class="k">修订代价</div>
@@ -292,18 +292,33 @@ hr.soft{border:0;border-top:1px dashed var(--line2);margin:28px 0}
 </div>
 
 <h3>为什么必须留口径余量</h3>
-<p>v1.5 的 R→E 表在 R=15%/20%/25% 三档上的余量（0.272 / 0.309 / 0.531pp）<b>全部小于口径极差 1.301pp</b>。这意味着 R 不是「约束」，而是「恰好被历史样本内的一条路径满足」——换口径、换起点、换一段未来样本，R 就会被突破。<b>这不是策略失效，是把拟合残差当成了安全垫。</b></p>
+<p>v1.5 的 R→E 表在 R=15%/20%/25% 三档上的余量（0.272 / 0.309 / 0.531pp）<b>小于任何一种口径极差</b>。这意味着 R 不是「约束」，而是「恰好被历史样本内的一条路径满足」——换口径、换起点、换一段未来样本，R 就会被突破。<b>这不是策略失效，是把拟合残差当成了安全垫。</b></p>
 
+<h3>口径极差有六种算法，必须分清，不得混用</h3>
 <table>
-  <thead><tr><th class="num">R</th><th class="num">v1.5 的 E</th><th class="num">v1.5 余量</th><th class="num">v1.6 的 E</th><th class="num">v1.6 余量</th><th class="num">余量/口径极差</th><th class="num">年化代价</th></tr></thead>
+  <thead><tr><th>算法</th><th class="num">数值</th><th>说明</th></tr></thead>
   <tbody>
-    <tr><td class="num">15%</td><td class="num">30%</td><td class="num">0.272pp</td><td class="num"><b>25%</b></td><td class="num">2.827pp</td><td class="num">2.17×</td><td class="num">−0.130pp/年</td></tr>
-    <tr class="hl2"><td class="num">20%</td><td class="num">40%</td><td class="num">0.309pp</td><td class="num"><b>35%</b></td><td class="num">2.766pp</td><td class="num">2.13×</td><td class="num">−0.106pp/年</td></tr>
-    <tr><td class="num">25%</td><td class="num">50%</td><td class="num">0.531pp</td><td class="num"><b>45%</b></td><td class="num">2.898pp</td><td class="num">2.23×</td><td class="num">−0.081pp/年</td></tr>
-    <tr><td class="num">30%</td><td class="num">55%</td><td class="num">3.208pp</td><td class="num"><b>55%</b></td><td class="num">3.208pp</td><td class="num">2.47×</td><td class="num">0</td></tr>
+    <tr><td>① 账户层<b>简化口径</b> × 日历单维</td><td class="num">1.301pp</td><td>现金不计息 / 无成本 / 不含股息；q63 19.627% → calQ 20.928%。<b>这是初稿误用的数</b></td></tr>
+    <tr><td>② 主口径 × 日历单维</td><td class="num">1.233pp</td><td>同一 6 维主口径，仅 q63→calQ：19.691% → 20.924%</td></tr>
+    <tr class="hl2"><td>③ 主口径 × <b>单变量极差</b></td><td class="num"><b>1.473pp</b></td><td>11 个单维变体：18.609%（无成本/T+0）~ 20.082%（carry 归零）</td></tr>
+    <tr><td>④ 主口径 × 单变量 + 日历</td><td class="num"><b>2.315pp</b></td><td>18.609% ~ 20.924%</td></tr>
+    <tr><td>⑤ 主口径 × <b>全 160 格</b></td><td class="num">2.395pp</td><td>18.232% ~ 20.627%（R=20% 行）</td></tr>
+    <tr><td>⑥ 主口径 × 全 160 格 + 日历</td><td class="num"><b>2.692pp</b></td><td>18.232% ~ 20.924%</td></tr>
   </tbody>
 </table>
-<p class="tbl-note">规则：选使 <code>MDD ≤ R − 2.7pp</code> 的最大 5% 整数档敞口。2.7pp ≈ 2 倍口径极差。若更看重收益，可选「留 1× 口径极差」的档位（27.5/37.5/48/59%）；若更看重回撤，可再降一档。<b>三者都是偏好选择，回测不提供「最优」。</b></p>
+<p class="tbl-note"><b>初稿的错误（已更正）</b>：本节初稿用 ① 作标尺并据此宣称「余量约 2 倍」。但 ① 是<b>简化口径</b>下的<b>单一日历维度</b>差——既不是主口径，也没覆盖现金、成本、成交、股息四个维度。用它作安全垫标尺会<b>系统性高估余量 1.13~2.07 倍</b>。<br>
+「换一个同样合理的口径」的正确定义是 <b>③：1.473pp</b>（每次只动一个维度、且都在主口径内）。④⑤⑥ 是「多维同时变化」的联合极差，用于刻画最坏情况，不是「同样合理」的单点替代。</p>
+
+<table>
+  <thead><tr><th class="num">R</th><th class="num">v1.5 的 E</th><th class="num">v1.5 余量</th><th class="num">v1.6 的 E</th><th class="num">v1.6 余量</th><th class="num">余量 / ③单维</th><th class="num">余量 / ⑥全网格</th><th class="num">年化代价</th></tr></thead>
+  <tbody>
+    <tr><td class="num">15%</td><td class="num">30%</td><td class="num">0.272pp</td><td class="num"><b>25%</b></td><td class="num">2.827pp</td><td class="num">1.92×</td><td class="num">1.05×</td><td class="num">−0.130pp/年</td></tr>
+    <tr class="hl2"><td class="num">20%</td><td class="num">40%</td><td class="num">0.309pp</td><td class="num"><b>35%</b></td><td class="num">2.766pp</td><td class="num">1.88×</td><td class="num">1.03×</td><td class="num">−0.106pp/年</td></tr>
+    <tr><td class="num">25%</td><td class="num">50%</td><td class="num">0.531pp</td><td class="num"><b>45%</b></td><td class="num">2.898pp</td><td class="num">1.97×</td><td class="num">1.08×</td><td class="num">−0.081pp/年</td></tr>
+    <tr><td class="num">30%</td><td class="num">55%</td><td class="num">3.208pp</td><td class="num"><b>55%</b></td><td class="num">3.208pp</td><td class="num">2.18×</td><td class="num">1.19×</td><td class="num">0</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">规则：选使 <code>MDD ≤ R − 2.7pp</code> 的最大 5% 整数档敞口。<b>2.7pp 是「以单维极差 1.473pp 为标尺约 2 倍」的门槛，不是「对全网格留 2 倍」</b>——对全网格 2.692pp，余量只有 1.03~1.19 倍，<b>几乎没有冗余</b>。若要求对全网格也留 2 倍，余量须 ≥5.38pp，R→E 需再降至约 20/30/40/55；<b>本版不做此调整</b>（调 E 应由收益-回撤偏好决定，不应由「极差取哪种定义」这种会计选择驱动）。若更看重收益，可选「留 1× 单维极差」的档位（27.5/37.5/48/59%）；若更看重回撤，可再降一档。<b>三者都是偏好选择，回测不提供「最优」。</b></p>
 
 <!-- ============ 5 表 C ============ -->
 <h2><span class="num">05</span>表 C｜口径敏感性诊断层</h2>
@@ -369,7 +384,7 @@ hr.soft{border:0;border-top:1px dashed var(--line2);margin:28px 0}
     <tr><td>q63 → calQ（日历季末）</td><td class="num">20.924%</td><td class="num" style="color:var(--risk)">+0.924pp</td><td class="num">1</td><td>2016-01-26</td></tr>
   </tbody>
 </table>
-<p class="tbl-note">口径极差 <b>1.301pp</b> = 主口径余量 0.309pp 的 <b>4.21 倍</b>。禁止写法：「MDD 19.63%~20.93%」「20.28% ±0.65pp」「平均约 20.3%」「两套口径结论一致/差异可忽略」。<br>
+<p class="tbl-note">主口径<b>单维极差 1.473pp</b>（全网格含日历 <b>2.692pp</b>）= 主口径余量 0.309pp 的 <b>4.8 倍</b>（8.7 倍）。禁止写法：「MDD 19.63%~20.93%」「20.28% ±0.65pp」「平均约 20.3%」「两套口径结论一致/差异可忽略」。<br>
 注：P2 另有一个 <code>20.928%</code>，属「账户层简化口径（现金不计息/无成本/不含股息）」，与上图 <code>20.924%</code>（P5 同引擎主口径）差 0.004pp，属口径构成差异，<b>不得相减、不得并列成区间</b>。</p>
 
 <h3>全矩阵与符号一致性</h3>
@@ -440,8 +455,8 @@ hr.soft{border:0;border-top:1px dashed var(--line2);margin:28px 0}
 
 <div class="card">
   <p><b>1. 那条条款可以删了，但理由不是「回测证明它无效」。</b> 它在 16.8 年里从未动作，净效应不可评估——无法证明有效，也无法证明无效。删它的理由是：在一个明确「不做择时」的策略里，不能长期保留一个「暴跌后追跌减仓」的触发开关，且它自己就写着「不构成尾部保护」。保留「达 R 书面复核」作为行为约束，但必须承认那**不是风控**。</p>
-  <p><b>2. 真正该改的是 R→E 表。</b> R=20% 配 E=40%，历史回撤 19.691%，余量 0.309pp——而口径极差 1.301pp。也就是说，「R 没被突破」这件事，靠的是口径选得巧，不是策略稳。下调到 E=35%，年化少 0.106pp，余量变成 2.766pp（口径极差的 2.13 倍）。**这是本轮唯一一处「几乎免费」的改进。**</p>
-  <p><b>3. 本组合没有任何尾部保护机制。</b> 回撤由静态 E 单独决定。R 是资金安排的输入参数，不是回撤上限保证。如果你需要「跌到某处有人替我减仓」，这个方案不适合你——不要因为「有规则」就认为「有风控」。</p>
+  <p><b>2. 真正该改的是 R→E 表。</b> R=20% 配 E=40%，历史回撤 19.691%，余量 0.309pp——而主口径单维极差 1.473pp、全网格含日历 2.692pp。也就是说，「R 没被突破」这件事，靠的是口径选得巧，不是策略稳。下调到 E=35%，年化少 0.106pp，余量变成 2.766pp（对单维极差 1.88 倍，<b>对全网格只有 1.03 倍</b>）。这是本轮唯一一处「几乎免费」的改进，但它的准确含义是「口径敏感度已校准」，<b>不是「安全垫充足」</b>——对最坏联合极差，它几乎没有冗余。</p>
+  <p><b>3. 本组合没有任何尾部保护机制。</b> 回撤由静态 E 单独决定。R 是资金安排的输入参数，不是回撤上限保证。人工构造的慢熊路径里，R=20%/E=35% 的回撤达 R 的 <b>1.17~1.41 倍</b>，R=30%/E=55% 达 <b>2.16~2.55 倍</b>，且最坏档名义跌幅 −105%、物理越界不可评估。如果你需要「跌到某处有人替我减仓」，这个方案不适合你——不要因为「有规则」就认为「有风控」。</p>
 </div>
 
 <hr class="soft">
@@ -449,7 +464,7 @@ hr.soft{border:0;border-top:1px dashed var(--line2);margin:28px 0}
 <h3>下一步</h3>
 <ul>
   <li><b>12 周纸面执行（未开始）</b>：这是正式投入真金白银前<b>唯一剩余的关卡</b>。因第 5 条改为书面复核，验证重点从「能不能执行减半」变成「<b>复核会不会真的发生、会不会变成改仓位的借口</b>」。</li>
-  <li><b>确认 E</b>：按 <code>§8.1</code> 六个数字定 E。若坚持 E=40%，须书面签署「已知悉余量 0.309pp 小于口径极差 1.301pp」。</li>
+  <li><b>确认 E</b>：按 <code>§8.1</code> 六个数字定 E。若坚持 E=40%，须书面签署「已知悉余量 0.309pp 小于主口径单维极差 1.473pp；换用同样合理的口径即可能突破 R」。</li>
   <li><b>写死执行工具口径</b>：基金代码 + 跟踪指数代码 + 快照日；`510880` 跟踪的是 000015，不是 000922。</li>
 </ul>
 

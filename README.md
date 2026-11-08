@@ -189,6 +189,66 @@ node execution_simulator.js # 实盘：整手/最低佣金/T+1/订单明细
 
 ---
 
+## 第六轮：工程闭环（2026-11-08，v1.6.1）
+
+仍是一份外部审阅（作者声明未本地运行脚本）触发的。**不新增任何策略规则、不改任何参数**，只修三处工程缺陷。
+
+> **版本口径**：规则仍是 **v1.6**（一个数字都没改）。`v1.6.1` 只是工程版本号（见台账工具内部 `APP_VERSION`），**不另发策略文档**——因为规则没变，另发一份只会多一个需要同步的副本，而这一轮修的正是「副本不同步」。
+
+### 缺陷 1（最严重）：HTML 报告与 Markdown 口径不一致
+
+第五轮把「口径极差 1.301pp」改成了六种算法并列，但**只改了 Markdown，HTML 里 8 处旧数字继续对外发布**（已更正）——包括 KPI 卡片正面的「余量为口径极差的 2.13 倍」和结论页的「口径极差 1.301pp」。
+
+根因不是粗心，是结构问题：**同一个结论在两份文件里各写一遍，任何一次修正都只可能改到一半。**
+
+修法不是「再改一遍 HTML」，而是：
+
+| 新增 | 作用 |
+| :--- | :--- |
+| `metrics_v16.js` → `metrics_v16.json` | **关键指标唯一数据源**。四档 R→E 由引擎实跑，六种口径极差从 `phase5`/`phase6` 的 JSON 现算，全部带 sha256 快照。不存任何手填数字 |
+| `test_report_consistency.js` | 113 项断言：MD / HTML / README / 台账四份文档必须与数据源逐位一致，且不得再把已撤销措辞当成主张 |
+
+`metrics_v16.js` 自带**反向自校验**：如果算出来的值与 v1.6 已发布值差 >0.0015，拒绝写盘并报错。也就是说，它不能悄悄改数。
+
+一致性测试做了负向验证：改坏 5 种方式（删百分号 / 写回旧倍数 / 加空格 / 改一位小数 / 改台账表）**全部被抓到**。
+
+> 顺带查出并修正了一个此前没发现的细节：本仓库年化用的是**周期数 4088**（观测点 4089 − 1），不是观测点数。差 1 个单位只影响第 3 位小数（0.001pp），但足以让文档与引擎逐位对不上。
+
+### 缺陷 2：没人能用文件名判断「谁是当前引擎」
+
+`bt_engine.js` 头部写着「回测引擎 v5：同步 v1.2 规则」，而当前策略是 v1.6。新增 `ENGINES.md` 权威登记表，并给 `bt_engine.js` 加了顶部横幅。
+
+**没有采纳「把历史引擎移进 `archive/`」**：`bt_engine.js` 被 `bt_data.js` / `bt_extended.js` / `probe_valuation.js` 三个仍在复现命令里的脚本 require，移走会让第一、二轮报告无法复现。问题的根源是「文件名不代表版本」，不是「目录不够整齐」。
+
+新增单一入口 `run_all.js`：
+
+```bash
+node run_all.js          # 5 道闸门，约 0.5 秒
+node run_all.js --full   # 闸门 + 重跑主回测 / C 表 / 压力补跑 + 复校验，约 1.4 秒
+```
+
+**这是提交前唯一必需命令。** 第一道（数据审计）失败时立即中止，不用坏数据产出「看起来正常」的数字。
+
+### 缺陷 3：台账只有 localStorage，没有恢复能力
+
+原来只有 CSV 导出——**CSV 是给分析用的，无法完整还原状态**。清浏览器缓存、换电脑即全部丢失。
+
+新增：JSON 完整备份（含策略版本、参数快照、记录条数、最后净值与回撤）、导入前逐项校验（11 类非法输入直接拒收且**不改动现有数据**）、恢复前自动留底 + 一键撤销、每 6 小时一次本地自动快照。
+
+校验函数是纯函数，被 `test_ledger_v16.js` 覆盖：断言从 35 条增至 80 条（7 组）。
+
+### 本轮验证结果
+
+```text
+run_all.js --full → 9/9 通过
+phase5_backtest_data.json 重算后逐字节相同
+phase6_stress_v16.json 仅 meta.generated 时间戳变化（内容哈希已处理）
+```
+
+**R→E 表、MDD、触发次数、口径极差——一个数字都没动。**
+
+---
+
 ## 各轮做了哪些优化
 
 **第一轮（引擎同步与修正，2026-11-07）**
@@ -268,7 +328,8 @@ node execution_simulator.js # 实盘：整手/最低佣金/T+1/订单明细
 **报告**：`P0审计报告_2026-11-08.md`（第五轮审计：7 处缺陷 + 3 项新证据）、`回测报告_v1.6_2026-11-08.html`、`回测报告_最终方案审计_2026-11-07.html`、`回测报告_扩展验证_2026-11-07.html`、`回测报告_修正版_2026-11-07.html`、`策略评估报告_2026-11-07.md`、`deliverables/a-share/portfolio-health-final-plan-2026-11-07.md`、以及 2026-11-06 的四份历史报告
 **数据**：`hs300_daily_2010_2026.json`（000300）、`csi_dividend_2010_2026.json`（000922）、`valuation_semiannual_2010_2026.json`、`bt_data.json` / `alloc_data.json` / `extended_data.json` / `final_audit_data.json` / `final_team_notes.json`、`phase2_baseline_data.json`、`phase5_backtest_data.json`、`phase5_scaffold_check.json`、`phase6_stress_v16.json`
 **引擎与构建脚本**：`bt_engine.js`（v5 择时引擎）、`bt_final.js`（第三轮常数敞口引擎）、`bt_r_clause.js`（第四轮触发状态机脚手架 + 成本敏感性登记）、`phase2_baseline.js` / `phase2_indices.js`、`phase5_run.js` / `phase5_sensitivity.js`、`phase6_stress_v16.js`（v1.6 新 R→E 表压力路径补跑 + 口径极差复核）、`bt_data.js` / `bt_report.js` / `opt_report.js`、`alloc_data.js` / `alloc_report.js`、`valuation_series.js` / `probe_valuation.js` / `bt_extended.js` / `ext_report.js`、`final_report.js`
-**审计与回归**：`data_audit.js`（11 项数据检查，硬错误拒绝出数）、`data_manifest.json`（三份输入数据 sha256 快照）、`test_regression.js` + `regression_baseline.json`（17 个用例的整条净值序列，容差 1e-9）
+**审计与回归**：`data_audit.js`（11 项数据检查，硬错误拒绝出数）、`data_manifest.json`（三份输入数据 sha256 快照）、`test_regression.js` + `regression_baseline.json`（17 个用例的整条净值序列，容差 1e-9）、`metrics_v16.js` + `metrics_v16.json`（**关键指标唯一数据源**）、`test_report_consistency.js`（113 项断言，校验四份文档与数据源一致）、`run_all.js`（**单一验证入口，提交前必跑**）
+**架构说明**：`ENGINES.md`（引擎与脚本权威登记表：谁是当前入口、谁是历史、为什么不能删）
 **执行工具**：`纸面执行台账_v1.6.html`（自包含，无外部依赖）、`test_ledger_v16.js`（台账逻辑回归，6 组 35 断言）、`execution_simulator.js`（实盘执行模拟：整手 100 份 / 最低 5 元佣金 / T+1 / 订单明细 / 资金规模扫描）
 **编排记录**：`round4_lead_rulings.md`（第四轮裁决总表）、`round4_phase1_notes.md` / `_phase2_baseline.md` / `_phase3_quant.md` / `_phase3_dividend.md` / `_phase3_etf.md` / `_phase3_etf_interface.md` / `_phase4_candidates.md` / `_phase5_backtest.md`（成员原文逐字存档）
 
@@ -300,7 +361,13 @@ node phase5_sensitivity.js >> phase5_backtest_stdout.txt 2>&1  # C 表 808 单�
 node phase6_stress_v16.js                 # 先逐位复现原 36 单元，通过后才扩展
 
 # 纸面执行台账工具的回归测试
-node test_ledger_v16.js                    # 6 组断言，含浮点边界与空行守卫
+node test_ledger_v16.js                    # 7 组 80 断言，含浮点边界 / 空行守卫 / 备份校验
+
+# 第六轮：提交前唯一必需命令（含上述全部闸门）
+node run_all.js                            # 5 道闸门，约 0.5 秒
+node run_all.js --full                     # 闸门 + 重跑主回测 / 压力补跑 + 复校验
+node run_all.js --verbose                  # 打印每道闸门的完整输出
+node test_report_consistency.js --negative # 负向自测：证明一致性测试真能抓到错
 
 # 第五轮：P0 审计（改任何代码前后都跑这三个）
 node data_audit.js                         # 数据闸门：11 项检查，hard fail 即 exit 1

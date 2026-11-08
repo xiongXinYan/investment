@@ -182,6 +182,22 @@
   </div>
 </div>
 
+<!-- ============ 0. 备份与恢复 ============ -->
+<div class="card">
+  <div class="card-h"><h2>〇 备份与恢复</h2><span class="hint">12 周记录丢了就白做了 —— 每周填完顺手导一次</span></div>
+  <div class="card-b">
+    <div class="bar" style="margin-bottom:10px">
+      <button class="btn p" id="expJson">导出完整备份（JSON）</button>
+      <button class="btn" id="impJsonBtn">从备份恢复</button>
+      <input type="file" id="impJsonFile" accept=".json,application/json" style="display:none">
+      <button class="btn" id="restoreAuto" disabled>回退到自动备份</button>
+      <button class="btn" id="undoImport" disabled>撤销上次恢复</button>
+    </div>
+    <div class="note" id="backupNote"></div>
+    <div id="impPreview"></div>
+  </div>
+</div>
+
 <!-- ============ 1. 当前状态 ============ -->
 <div class="card">
   <div class="card-h"><h2>① 当前状态</h2><span class="hint">按最新一条周度记录计算</span></div>
@@ -358,6 +374,254 @@ function load(){
 }
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ console.warn("保存失败", e); }
+  autoSnapshot();
+}
+
+/* ==========================================================================
+   备份与恢复
+   2026-11-08 新增（外部审阅问题 3）。
+   问题：数据只存在本机 localStorage，清缓存/换电脑即丢，且只有 CSV 导出、
+        没有导入——CSV 是给分析用的，无法完整还原状态。
+   做法：JSON 完整备份（含策略版本与参数快照）+ 导入前校验 + 恢复前自动留底 +
+        每 6 小时一次本地自动快照。校验函数是纯函数，可被 node 测试直接调用。
+   ========================================================================== */
+var APP_VERSION = "1.6.1";
+var BACKUP_FORMAT = "v16_paper_ledger_backup";
+var KEY_AUTO = KEY + "_auto";
+var KEY_PREV = KEY + "_prev";
+var VALID_R = [0.15, 0.20, 0.25, 0.30];
+var PENDING = null;   // 已通过校验、等待用户确认的备份
+
+/* 从任意 rows 数组计算序列（与 series() 同逻辑，供导入预览使用） */
+function seriesOf(rows){
+  var peak = -Infinity, out = [];
+  for(var i=0;i<rows.length;i++){
+    var r = rows[i], c = calcRow(r);
+    if(c.nav == null){
+      out.push({ i:i, r:r, nav:null, eq:null, div:null, cashRate:c.cashRate,
+                 peak:(peak === -Infinity ? null : peak), dd:null });
+      continue;
+    }
+    if(c.nav > peak) peak = c.nav;
+    var dd = peak > 0 ? 1 - c.nav / peak : 0;
+    out.push({ i:i, r:r, nav:c.nav, eq:c.eq, div:c.div, cashRate:c.cashRate, peak:peak, dd:dd });
+  }
+  return out;
+}
+
+function summarizeRows(rows){
+  var ser = seriesOf(rows || []);
+  var filled = ser.filter(function(x){ return x.nav != null; });
+  var last = filled.length ? filled[filled.length-1] : null;
+  return {
+    weeks: (rows || []).length,
+    filledWeeks: filled.length,
+    lastNav: last ? last.nav : null,
+    lastDd: last ? last.dd : null
+  };
+}
+
+function buildBackup(){
+  var s = summarizeRows(S.rows);
+  var m = R2E[S.cfg.R] || R2E[0.20];
+  return {
+    format: BACKUP_FORMAT,
+    meta: {
+      appVersion: APP_VERSION,
+      strategyVersion: "v1.6",
+      exportedAt: new Date().toISOString(),
+      counts: { weeks: s.weeks, filledWeeks: s.filledWeeks,
+                reviews: (S.reviews||[]).length, rebal: (S.rebal||[]).length },
+      lastNav: s.lastNav, lastDd: s.lastDd,
+      cfgSnapshot: JSON.parse(JSON.stringify(S.cfg)),
+      r2eRow: { R: S.cfg.R, E: m.eq, mdd: m.mdd, room: m.room }
+    },
+    data: JSON.parse(JSON.stringify(S))
+  };
+}
+
+/* 校验：返回 {ok, errs[], warns[], summary}。纯函数，不触碰 DOM 与 S。 */
+function validateBackup(o){
+  var errs = [], warns = [];
+  function done(summary){ return { ok: errs.length === 0, errs: errs, warns: warns, summary: summary || null }; }
+
+  if(!o || typeof o !== "object" || Array.isArray(o)){ errs.push("文件内容不是 JSON 对象"); return done(); }
+  if(o.format != null && o.format !== BACKUP_FORMAT)
+    errs.push("格式标记不匹配：" + o.format + "（期望 " + BACKUP_FORMAT + "）");
+
+  var d = o.data || o;          // 兼容「直接把 S 存下来」的旧式备份
+  if(!d || typeof d !== "object"){ errs.push("缺少 data 字段"); return done(); }
+  if(!d.cfg || typeof d.cfg !== "object"){ errs.push("缺少 cfg（参数）字段，无法确认这是台账备份"); return done(); }
+
+  var cfg = d.cfg;
+  if(VALID_R.indexOf(cfg.R) < 0)
+    errs.push("cfg.R = " + cfg.R + "，不在 0.15 / 0.20 / 0.25 / 0.30 之内");
+  if(!isFinite(parseFloat(cfg.cap)) || parseFloat(cfg.cap) <= 0)
+    errs.push("cfg.cap = " + cfg.cap + "，须为正数");
+
+  var rows = d.rows;
+  if(!Array.isArray(rows)){ errs.push("rows 不是数组"); }
+  else {
+    var bad = [];
+    rows.forEach(function(r, i){
+      if(!r || typeof r !== "object"){ bad.push("第 " + (i+1) + " 行不是对象"); return; }
+      ["vH", "vD", "cash"].forEach(function(k){
+        var v = r[k];
+        if(v === "" || v == null) return;
+        var n = parseFloat(v);
+        if(!isFinite(n)) bad.push("第 " + (i+1) + " 行 " + k + " 非数值：" + v);
+        else if(n < 0) bad.push("第 " + (i+1) + " 行 " + k + " 为负数：" + v);
+      });
+      if(r.rate !== "" && r.rate != null){
+        var rt = parseFloat(r.rate);
+        if(!isFinite(rt) || rt < 0 || rt > 20) bad.push("第 " + (i+1) + " 行现金利率异常：" + r.rate);
+      }
+    });
+    if(bad.length) errs.push("周度记录有 " + bad.length + " 处非法：" + bad.slice(0, 3).join("；") + (bad.length > 3 ? " …" : ""));
+  }
+  if(d.reviews != null && !Array.isArray(d.reviews)) errs.push("reviews 不是数组");
+  if(d.rebal != null && !Array.isArray(d.rebal)) errs.push("rebal 不是数组");
+
+  var meta = o.meta || {};
+  if(meta.strategyVersion && meta.strategyVersion !== "v1.6")
+    warns.push("备份来自策略 " + meta.strategyVersion + "，当前为 v1.6，R→E 表可能不同");
+  if(meta.appVersion && meta.appVersion !== APP_VERSION)
+    warns.push("工具版本不同：" + meta.appVersion + " → " + APP_VERSION);
+  if(meta.counts && Array.isArray(rows) && meta.counts.weeks != null && meta.counts.weeks !== rows.length)
+    warns.push("备份声明的周数 " + meta.counts.weeks + " 与实际 " + rows.length + " 不一致");
+  if(Array.isArray(rows) && rows.length && summarizeRows(rows).filledWeeks === 0)
+    warns.push("备份里所有周度记录都是空的");
+
+  var s = summarizeRows(Array.isArray(rows) ? rows : []);
+  return done({
+    weeks: s.weeks, filledWeeks: s.filledWeeks,
+    lastNav: s.lastNav, lastDd: s.lastDd,
+    reviews: Array.isArray(d.reviews) ? d.reviews.length : 0,
+    rebal: Array.isArray(d.rebal) ? d.rebal.length : 0,
+    exportedAt: meta.exportedAt || "(未记录)",
+    strategyVersion: meta.strategyVersion || "(未记录)",
+    appVersion: meta.appVersion || "(未记录)",
+    cfg: { R: cfg.R, cap: cfg.cap, start: cfg.start || "" }
+  });
+}
+
+/* 整体替换状态（导入与撤销共用，避免两处各写一份归一化） */
+function replaceState(d){
+  S = {
+    cfg: Object.assign({ R: 0.20, cap: 500000, start: "", codeH: "", idxH: "", codeD: "", idxD: "" }, (d && d.cfg) || {}),
+    rows: Array.isArray(d && d.rows) ? d.rows : [],
+    reviews: Array.isArray(d && d.reviews) ? d.reviews : [],
+    rebal: Array.isArray(d && d.rebal) ? d.rebal : [],
+    final: Object.assign({ answers: {}, verdict: "", sign: "", note: "" }, (d && d.final) || {})
+  };
+}
+
+/* 恢复：先给当前状态留底（可撤销），再整体替换。 */
+function applyBackup(o){
+  var v = validateBackup(o);
+  if(!v.ok) return v;
+  try{ localStorage.setItem(KEY_PREV, JSON.stringify({ at: new Date().toISOString(), data: S })); }catch(e){}
+  replaceState(o.data || o);
+  save();
+  renderAll();
+  return v;
+}
+
+/* 撤销上一次恢复：回到 KEY_PREV 留底的状态 */
+function undoLastRestore(){
+  var prev = null;
+  try{ prev = JSON.parse(localStorage.getItem(KEY_PREV) || "null"); }catch(e){}
+  if(!prev || !prev.data) return { ok: false, at: null };
+  replaceState(prev.data);
+  save();
+  try{ localStorage.removeItem(KEY_PREV); }catch(e){}
+  renderAll();
+  return { ok: true, at: prev.at };
+}
+
+/* 自动快照：每 6 小时最多一次，避免 localStorage 被无限写大 */
+function autoSnapshot(){
+  try{
+    var prev = JSON.parse(localStorage.getItem(KEY_AUTO) || "null");
+    var now = Date.now();
+    if(prev && prev.atMs && (now - prev.atMs) < 6 * 3600 * 1000) return;
+    localStorage.setItem(KEY_AUTO, JSON.stringify({
+      at: new Date().toISOString(), atMs: now,
+      strategyVersion: "v1.6", appVersion: APP_VERSION,
+      data: S
+    }));
+  }catch(e){ /* 配额满等情况静默失败，不阻断正常保存 */ }
+}
+
+/* 手动下载备份 */
+function exportBackup(){
+  var b = buildBackup();
+  downloadText(JSON.stringify(b, null, 2), "纸面执行台账_备份_" + today() + ".json", "application/json");
+}
+
+function downloadText(text, filename, mime){
+  var blob = new Blob([text], { type: mime + ";charset=utf-8;" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+function renderBackupNote(){
+  var n = el("backupNote");
+  if(!n) return;
+  var auto = null;
+  try{ auto = JSON.parse(localStorage.getItem(KEY_AUTO) || "null"); }catch(e){}
+  var html = "本工具<b>不联网、不上传</b>，数据只存在本机浏览器 localStorage。" +
+    "<b>清理浏览器数据、换电脑、换浏览器都会丢失，且无法找回。</b>" +
+    "重要节点请用「导出完整备份」（JSON 可完整恢复；CSV 仅供分析，不能还原）。";
+  if(auto && auto.at){
+    html += "<br>上次自动备份：<b>" + auto.at.replace("T", " ").slice(0, 19) + "</b>（仅存本机，可一键回退）";
+    var btn = el("restoreAuto");
+    if(btn) btn.disabled = false;
+  } else {
+    html += "<br>尚无自动备份（首次保存后生成）。";
+  }
+  try{
+    if(el("undoImport")) el("undoImport").disabled = !localStorage.getItem(KEY_PREV);
+  }catch(e){}
+  n.innerHTML = html;
+}
+
+function renderImportPreview(v){
+  var box = el("impPreview");
+  if(!box) return;
+  if(!v){ box.innerHTML = ""; return; }
+  var h = "";
+  if(v.errs.length){
+    h += "<div class='note r'><b>校验未通过，已拒绝导入（未改动任何数据）。</b><ul style='margin:6px 0 0 18px'>" +
+      v.errs.map(function(e){ return "<li>" + e + "</li>"; }).join("") + "</ul></div>";
+  } else {
+    var s = v.summary;
+    h += "<div class='note g'><b>校验通过。</b>" +
+      "<table style='margin-top:8px;font-size:12.5px'>" +
+      "<tr><td style='padding:2px 10px 2px 0;color:var(--muted)'>备份导出时间</td><td>" + s.exportedAt.replace("T"," ").slice(0,19) + "</td></tr>" +
+      "<tr><td style='padding:2px 10px 2px 0;color:var(--muted)'>策略 / 工具版本</td><td>" + s.strategyVersion + " / " + s.appVersion + "</td></tr>" +
+      "<tr><td style='padding:2px 10px 2px 0;color:var(--muted)'>参数</td><td>R=" + (s.cfg.R*100).toFixed(0) + "%　起始资金 " + s.cfg.cap + "　起始日 " + (s.cfg.start || "—") + "</td></tr>" +
+      "<tr><td style='padding:2px 10px 2px 0;color:var(--muted)'>记录</td><td>" + s.weeks + " 周（已填 " + s.filledWeeks + "）· 复核 " + s.reviews + " 次 · 再平衡 " + s.rebal + " 次</td></tr>" +
+      "<tr><td style='padding:2px 10px 2px 0;color:var(--muted)'>最后状态</td><td>" +
+        (s.lastNav == null ? "—" : yuan(s.lastNav) + "，回撤 " + pct(s.lastDd)) + "</td></tr>" +
+      "</table></div>";
+    if(v.warns.length){
+      h += "<div class='note w' style='margin-top:8px'><b>提请确认：</b><ul style='margin:6px 0 0 18px'>" +
+        v.warns.map(function(w){ return "<li>" + w + "</li>"; }).join("") + "</ul></div>";
+    }
+    h += "<div class='bar' style='margin-top:10px'><button class='btn d' id='doImport'>确认恢复（会覆盖当前台账，覆盖前自动留底）</button></div>";
+  }
+  box.innerHTML = h;
+}
+
+function readFileAsText(file, cb){
+  var fr = new FileReader();
+  fr.onload = function(){ cb(String(fr.result)); };
+  fr.onerror = function(){ cb(null); };
+  fr.readAsText(file);
 }
 
 /* ---------- 工具 ---------- */
@@ -405,21 +669,9 @@ function hitR(dd){
 }
 
 /* ---------- 全序列：高水位与回撤 ---------- */
-function series(){
-  var peak = -Infinity, out = [];
-  for(var i=0;i<S.rows.length;i++){
-    var r = S.rows[i], c = calcRow(r);
-    if(c.nav == null){
-      out.push({ i:i, r:r, nav:null, eq:null, div:null, cashRate:c.cashRate,
-                 peak:(peak === -Infinity ? null : peak), dd:null });
-      continue;
-    }
-    if(c.nav > peak) peak = c.nav;
-    var dd = peak > 0 ? 1 - c.nav / peak : 0;
-    out.push({ i:i, r:r, nav:c.nav, eq:c.eq, div:c.div, cashRate:c.cashRate, peak:peak, dd:dd });
-  }
-  return out;
-}
+/* 单一定义在 seriesOf(rows)（见「备份与恢复」段），此处只做绑定，
+   避免导入预览与主视图各写一份回撤逻辑而不一致。 */
+function series(){ return seriesOf(S.rows); }
 /* 最后一条「有数据」的记录 */
 function lastFilled(ser){
   for(var i=ser.length-1;i>=0;i--){ if(ser[i].nav != null) return ser[i]; }
@@ -674,12 +926,35 @@ function renderFinal(){
 
 /* ---------- 统一重绘 ---------- */
 function renderAll(){
-  renderCfg(); renderStatus(); renderWeek(); renderReviews(); renderFinal();
+  renderCfg(); renderStatus(); renderWeek(); renderReviews(); renderFinal(); renderBackupNote();
 }
 
 /* ---------- 事件 ---------- */
 document.addEventListener("change", function(e){
   var t = e.target;
+
+  /* 备份文件导入：先读、再校验、最后才允许确认恢复 */
+  if(t.id === "impJsonFile"){
+    var f = t.files && t.files[0];
+    if(!f) return;
+    readFileAsText(f, function(txt){
+      if(txt == null){
+        PENDING = null;
+        renderImportPreview({ ok: false, errs: ["文件读取失败（可能不是文本文件）"], warns: [], summary: null });
+        return;
+      }
+      var o = null, err = null;
+      try{ o = JSON.parse(txt); }catch(ex){ err = ex; }
+      if(err){
+        PENDING = null;
+        renderImportPreview({ ok: false, errs: ["不是合法 JSON：" + err.message], warns: [], summary: null });
+        return;
+      }
+      PENDING = o;
+      renderImportPreview(validateBackup(o));
+    });
+    return;
+  }
 
   /* 设置 */
   if(t.id === "cfgR"){
@@ -768,6 +1043,51 @@ document.addEventListener("click", function(e){
     return;
   }
   if(t.id === "expCsv"){ exportCsv(); return; }
+
+  /* 备份与恢复 */
+  if(t.id === "expJson"){ exportBackup(); return; }
+  if(t.id === "impJsonBtn"){
+    var fi = document.getElementById("impJsonFile");
+    if(fi) fi.click();
+    return;
+  }
+  if(t.id === "doImport"){
+    if(!PENDING){ return; }
+    if(!confirm("确认用备份覆盖当前台账？覆盖前会自动留底，之后可用「撤销上次恢复」退回。")) return;
+    var v = applyBackup(PENDING);
+    PENDING = null;
+    var box = document.getElementById("impPreview");
+    if(box){
+      box.innerHTML = v.ok
+        ? "<div class='note g'><b>已恢复。</b>共 " + v.summary.weeks + " 周记录（已填 " + v.summary.filledWeeks + " 周）。点「撤销上次恢复」可退回。</div>"
+        : "<div class='note r'>恢复失败：备份未通过校验，未改动任何数据。</div>";
+    }
+    return;
+  }
+  if(t.id === "restoreAuto"){
+    var auto = null;
+    try{ auto = JSON.parse(localStorage.getItem(KEY_AUTO) || "null"); }catch(e){}
+    if(!auto || !auto.at){ alert("没有可用的自动备份。"); return; }
+    if(!confirm("用自动备份（" + auto.at.replace("T", " ").slice(0, 19) + "）覆盖当前台账？")) return;
+    var v2 = applyBackup({ format: BACKUP_FORMAT, meta: { strategyVersion: "v1.6", appVersion: APP_VERSION, exportedAt: auto.at }, data: auto.data });
+    var box2 = document.getElementById("impPreview");
+    if(box2){
+      box2.innerHTML = v2.ok
+        ? "<div class='note g'>已回退到自动备份（" + auto.at.replace("T", " ").slice(0, 19) + "）。</div>"
+        : "<div class='note r'>回退失败：自动备份未通过校验（" + (v2.errs[0] || "") + "）。</div>";
+    }
+    return;
+  }
+  if(t.id === "undoImport"){
+    var prev = null;
+    try{ prev = JSON.parse(localStorage.getItem(KEY_PREV) || "null"); }catch(e){}
+    if(!prev || !prev.at){ alert("没有可撤销的恢复记录。"); return; }
+    if(!confirm("退回「上次恢复之前」的状态（" + prev.at.replace("T", " ").slice(0, 19) + "）？")) return;
+    var u = undoLastRestore();
+    var box3 = document.getElementById("impPreview");
+    if(box3) box3.innerHTML = u.ok ? "<div class='note g'>已退回恢复前状态。</div>" : "<div class='note r'>撤销失败。</div>";
+    return;
+  }
   if(t.id === "calcRebal"){ calcRebal(); return; }
   if(t.id === "saveRebal"){ saveRebal(); return; }
   if(t.id === "newReview"){ newReview(); return; }

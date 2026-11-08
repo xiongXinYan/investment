@@ -161,6 +161,111 @@ eq('yuan(null)', sandbox.yuan(null), '—');
 eq('pct(0.0523)', sandbox.pct(0.0523), '5.23%');
 eq('yuan(475000)', sandbox.yuan(475000), '¥475,000');
 
+console.log('=== 7. 备份 / 校验 / 恢复 / 自动快照 ===');
+const KEY_MAIN = 'v16_paper_ledger_v1';
+const KEY_AUTO = KEY_MAIN + '_auto';
+const KEY_PREV = KEY_MAIN + '_prev';
+
+const STORE = {
+  cfg: { R: 0.20, cap: 500000, start: '2026-01-02',
+         codeH: '510300', idxH: '000300', codeD: '515080', idxD: '000922' },
+  rows: [
+    { date: '2026-01-02', vH: 131250, vD: 43750, cash: 325000, rate: 1.3 },
+    { date: '2026-01-09', vH: 105000, vD: 45000, cash: 325000, rate: 1.3 }
+  ],
+  reviews: [{ date: '2026-01-09', items: { a: true } }],
+  rebal: [],
+  final: { answers: {}, verdict: '', sign: '', note: '' }
+};
+sandbox.replaceState(JSON.parse(JSON.stringify(STORE)));
+
+const bk = sandbox.buildBackup();
+eq('备份格式标记', bk.format, 'v16_paper_ledger_backup');
+eq('备份记录策略版本', bk.meta.strategyVersion, 'v1.6');
+eq('备份记录工具版本', bk.meta.appVersion, '1.6.1');
+eq('备份周数', bk.meta.counts.weeks, 2);
+eq('备份已填周数', bk.meta.counts.filledWeeks, 2);
+eq('备份记录复核条数', bk.meta.counts.reviews, 1);
+eq('备份内 R→E 快照 E', bk.meta.r2eRow.E, 0.35);
+eq('备份内最后回撤', +bk.meta.lastDd.toFixed(6), 0.05, 1e-6);
+eq('备份含参数快照', bk.meta.cfgSnapshot.codeH, '510300');
+eq('备份导出时间可解析', !isNaN(Date.parse(bk.meta.exportedAt)), true);
+
+// 序列化往返（模拟写文件再读回）
+const trip = JSON.parse(JSON.stringify(bk));
+const v1 = sandbox.validateBackup(trip);
+eq('往返后校验通过', v1.ok, true);
+eq('往返后周数', v1.summary.weeks, 2);
+eq('往返后已填周数', v1.summary.filledWeeks, 2);
+eq('往返后无错误', v1.errs.length, 0);
+eq('往返后无警告', v1.warns.length, 0);
+
+// series 与 seriesOf 必须同源
+eq('series() 与 seriesOf(S.rows) 完全一致',
+  JSON.stringify(sandbox.series()), JSON.stringify(sandbox.seriesOf(sandbox.S.rows)));
+
+console.log('--- 7a. 非法备份必须被拒 ---');
+const rejects = [
+  ['null', null],
+  ['数组', [1, 2]],
+  ['字符串', 'not json'],
+  ['缺 cfg', { format: 'v16_paper_ledger_backup', data: { rows: [] } }],
+  ['R=0.18 不在档位内', { data: { cfg: { R: 0.18, cap: 500000 }, rows: [] } }],
+  ['cap 为负', { data: { cfg: { R: 0.2, cap: -1 }, rows: [] } }],
+  ['rows 不是数组', { data: { cfg: { R: 0.2, cap: 500000 }, rows: {} } }],
+  ['vH 非数值', { data: { cfg: { R: 0.2, cap: 500000 }, rows: [{ date: 'd', vH: 'abc', vD: 0, cash: 0 }] } }],
+  ['cash 为负', { data: { cfg: { R: 0.2, cap: 500000 }, rows: [{ date: 'd', vH: 0, vD: 0, cash: -5 }] } }],
+  ['现金利率 999%', { data: { cfg: { R: 0.2, cap: 500000 }, rows: [{ date: 'd', vH: 0, vD: 0, cash: 0, rate: 999 }] } }],
+  ['格式标记不符', { format: 'some_other_app', data: { cfg: { R: 0.2, cap: 500000 }, rows: [] } }]
+];
+rejects.forEach(function (c) {
+  const r = sandbox.validateBackup(c[1]);
+  eq('拒收：' + c[0], r.ok, false);
+});
+
+console.log('--- 7b. 可恢复但有警告 ---');
+const warned = JSON.parse(JSON.stringify(trip));
+warned.meta.strategyVersion = 'v1.5';
+warned.meta.appVersion = '1.0.0';
+warned.meta.counts.weeks = 99;
+const v2 = sandbox.validateBackup(warned);
+eq('版本不同仍允许恢复', v2.ok, true);
+eq('版本不同给出警告', v2.warns.length >= 3, true);
+
+console.log('--- 7c. 恢复与撤销 ---');
+sandbox.replaceState({
+  cfg: { R: 0.20, cap: 1, start: '', codeH: '', idxH: '', codeD: '', idxD: '' },
+  rows: [{ date: 'x', vH: 1, vD: 1, cash: 1, rate: 1 }],
+  reviews: [], rebal: [], final: {}
+});
+const ap = sandbox.applyBackup(trip);
+eq('恢复成功', ap.ok, true);
+eq('恢复后周数', sandbox.S.rows.length, 2);
+eq('恢复后基金代码', sandbox.S.cfg.codeH, '510300');
+eq('恢复前已留底', !!sandbox.localStorage.getItem(KEY_PREV), true);
+const un = sandbox.undoLastRestore();
+eq('撤销成功', un.ok, true);
+eq('撤销后周数回到 1', sandbox.S.rows.length, 1);
+eq('撤销后留底已清空', sandbox.localStorage.getItem(KEY_PREV), null);
+
+console.log('--- 7d. 非法备份不得改动现有数据 ---');
+const guardLen = sandbox.S.rows.length;
+const apBad = sandbox.applyBackup({ data: { cfg: { R: 0.99, cap: 1 }, rows: [] } });
+eq('非法备份 apply 返回失败', apBad.ok, false);
+eq('非法备份未改动数据', sandbox.S.rows.length, guardLen);
+
+console.log('--- 7e. 自动快照（6 小时内不重复写） ---');
+sandbox.localStorage.removeItem(KEY_AUTO);
+sandbox.save();
+const a1 = JSON.parse(sandbox.localStorage.getItem(KEY_AUTO) || 'null');
+eq('自动快照已生成', !!(a1 && a1.at), true);
+eq('自动快照含策略版本', a1 && a1.strategyVersion, 'v1.6');
+eq('自动快照含数据', !!(a1 && a1.data && a1.data.cfg), true);
+const at1 = a1.at;
+sandbox.save();
+const a2 = JSON.parse(sandbox.localStorage.getItem(KEY_AUTO) || 'null');
+eq('6 小时内不重复写（时间戳不变）', a2.at, at1);
+
 console.log('');
 if(fail){ console.error('★ 失败 ' + fail + ' 项'); process.exit(1); }
-console.log('★ 全部通过（' + 6 + ' 组）');
+console.log('★ 全部通过（7 组）');

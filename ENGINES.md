@@ -1,0 +1,67 @@
+# 引擎与脚本权威登记表
+
+> **只解决一个问题**：打开这个仓库的人，能否在 30 秒内判断「哪个脚本才是当前策略的正式计算入口」。
+>
+> 2026-11-08 建立（外部审阅问题 2）。此前 `bt_engine.js` 头部写着「回测引擎 v5：同步 v1.2 规则」，而当前策略是 v1.6 —— 文件名和版本号都不能告诉你谁是权威。
+
+## 一句话结论
+
+```text
+当前正式入口 = phase5_run.js（主回测）+ metrics_v16.js（指标生成）
+当前正式引擎 = bt_r_clause.js
+bt_engine.js 是 v1.2 择时引擎，不参与 v1.6 的任何数字。
+```
+
+## 一、当前生效（v1.6 的全部数字来自这条链）
+
+| 文件 | 角色 | 规则版本 | 被谁依赖 | 产出 |
+| :--- | :--- | :--- | :--- | :--- |
+| `valuation_series.js` | 估值/股息率序列加载与插值 | — | `phase2_indices` `bt_final` `bt_extended` `probe_valuation` `data_audit` | 内存序列 |
+| `phase2_indices.js` | **数据基线加载器**：两指数对齐、收益序列、主口径参数 `P_MAIN_OPT` | — | `bt_r_clause` `phase3_quant_probe` `phase5_*` `phase6_*` `execution_simulator` `test_regression` | 内存数据 |
+| `bt_r_clause.js` | **当前正式引擎**：固定敞口 + 双资产 + 季度再平衡 + R 条款状态机 | v1.6 | `phase5_*` `phase6_*` `metrics_v16` `execution_simulator` `test_regression` | 净值/事件/计数 |
+| `phase5_run.js` | **主回测入口**：三路径 + V0 对齐 + 表 A/B | v1.6 | — | `phase5_backtest_data.json` |
+| `phase5_sensitivity.js` | C 表口径敏感性（追加写入同一 JSON） | v1.6 | — | 同上（追加） |
+| `phase6_stress_v16.js` | 压力路径补跑（先复现旧 36 单元再扩展） | v1.6 | `metrics_v16` | `phase6_stress_v16.json` |
+| `metrics_v16.js` | **关键指标唯一数据源**：四档 R→E + 六种口径极差 + 撤销结论 | v1.6 | `test_report_consistency` | `metrics_v16.json` |
+| `execution_simulator.js` | 实盘执行模拟：整手 100 份 / 最低 5 元佣金 / T+1 | v1.6 | — | 控制台 + 订单明细 |
+
+## 二、质量闸门（改引擎前后必须各跑一次）
+
+| 文件 | 拦什么 | 失败后 |
+| :--- | :--- | :--- |
+| `data_audit.js` | 日期对齐、缺失、异常跳变、股息前视、复权口径、数据版本 | **拒绝出数**（exit 1） |
+| `test_regression.js` | 17 个用例的整条净值序列（容差 1e-9）+ 数据 sha256 | 说明引擎行为变了，必须解释为什么 |
+| `test_report_consistency.js` | MD / HTML / README 是否与 `metrics_v16.json` 逐位一致 + 有无已撤销措辞 | 说明有一份文档被单独改了 |
+| `test_ledger_v16.js` | 纸面执行台账的计算逻辑（浮点边界、空行守卫） | 说明台账会算错数 |
+
+## 三、历史引擎（保留，但**不是**当前入口）
+
+| 文件 | 角色 | 规则版本 | 状态 | 为什么不能删 |
+| :--- | :--- | :--- | :--- | :--- |
+| `bt_engine.js` | v5 择时引擎（V0/S1/S2/S3 分级、timeRule、估值门槛） | **v1.2** | 归档 | `bt_data.js` / `bt_extended.js` / `probe_valuation.js` 三个历史报告生成器 require 它；删了这三个报告无法复现 |
+| `bt_final.js` | 第三轮常数敞口引擎 | v1.4 | 归档 | 产出 `final_audit_data.json`，而 `phase5_run.js` 用它做 V0 逐位对齐校验 |
+| `bt_data.js` | 第一轮择时数据包 | v1.3 | 归档 | 生成 `bt_data.json` |
+| `bt_extended.js` | 第二轮扩展验证 | v1.4 | 归档 | 生成 `extended_data.json` |
+| `probe_valuation.js` | 估值证伪探针 | v1.4 | 归档 | 生成 `final_team_notes.json` 的估值部分 |
+| `phase2_baseline.js` / `phase3_quant_probe.js` | 第四轮 Phase 2/3 的一次性探针 | v1.6 前置 | 归档 | 支撑 `round4_phase2_baseline.md` 与 `round4_phase3_quant.md` 的数字 |
+| `bt_report.js` / `opt_report.js` / `alloc_report.js` / `ext_report.js` / `final_report.js` | 各轮 HTML 报告生成器 | 对应各轮 | 归档 | 报告可复现性 |
+
+> **口径纪律**：`bt_engine.js` 产出的每一个数字都属于 v1.2 口径（70/30、旧股息率、旧成本假设），与 v1.6 **不可比较、不可混用**。见 `README.md` 的五组口径提醒。
+
+## 四、为什么没有把历史文件移进 `archive/`
+
+外部审阅建议建 `archive/` 目录迁移旧引擎。**没有采纳，理由是依赖会断**：
+
+`bt_engine.js` 被 3 个仍在 README 复现命令里的脚本 require。移进子目录后，这 3 个脚本的 `require('./bt_engine.js')` 会全部报错，而它们生成的 HTML 报告是历史证据的一部分。
+
+替代方案（本表 + 文件头横幅 + `run_all.js` 单一入口）解决的是同一个问题：**判断权威的成本**。目录结构不是问题的根源，「文件名不代表版本」才是。
+
+## 五、`run_all.js` 怎么用
+
+```bash
+node run_all.js            # 只跑四道闸门（快，约 15 秒）
+node run_all.js --full     # 闸门 + 重跑主回测 + 压力补跑 + 指标（约 1~2 分钟）
+node run_all.js --verbose  # 打印每道闸门的完整输出
+```
+
+任何一道闸门失败，`run_all.js` 立即 exit 1 并指出是哪一道。**这是提交前的唯一必需命令。**

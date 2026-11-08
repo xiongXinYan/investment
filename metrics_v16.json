@@ -1,0 +1,301 @@
+{
+ "meta": {
+  "strategyVersion": "v1.6",
+  "generatedBy": "metrics_v16.js",
+  "generatedAt": "2026-11-08T02:59:46.729Z",
+  "note": "本文件是 v1.6 关键指标的唯一数据源。Markdown 与 HTML 报告均由 test_report_consistency.js 校验与本文件一致，禁止任一方单独手改数字。",
+  "tradingDaysPerYear": 242.847,
+  "calendarYears": 16.838,
+  "annualizationWarning": "ann252Pct 用 nav.length/252 年化（本仓库历史报告口径，系统性高估 0.123pp）；annCalPct 为日历年化，是可比的时间加权收益。两者不得混用。",
+  "sources": [
+   {
+    "file": "hs300_daily_2010_2026.json",
+    "sha256": "21b06477402d34c9740be1454a9c7638080030b14777fb27178892999b4cb9a2"
+   },
+   {
+    "file": "csi_dividend_2010_2026.json",
+    "sha256": "abd331c7c487943bb71783cd0c0c0cd00f207e5f689eff36d86fd00137c8ea08"
+   },
+   {
+    "file": "valuation_semiannual_2010_2026.json",
+    "sha256": "1542db07228da6481823a72bc2e6c65723328c255fc6ce0d8bfa7aea49aa76d5"
+   },
+   {
+    "file": "phase5_backtest_data.json",
+    "sha256": "d0bdf3fdd6efa8a8709102ecaa12fa2d0d52ad10a6bd30bd6809f582cb3e383d",
+    "kind": "file"
+   },
+   {
+    "file": "phase6_stress_v16.json",
+    "kind": "content",
+    "sha256": "ccfcc098a287639104bd21dc36523c58d75b4502bed75ae0b8e5ff9f53520665",
+    "exclude": [
+     "meta.generated"
+    ],
+    "note": "内容哈希：排除每次运行都变的 meta.generated，否则文件哈希每次都不同，不可用于快照对账"
+   }
+  ]
+ },
+ "marginRulePP": 2.7,
+ "r2e": [
+  {
+   "R_pct": 15,
+   "E_pct": 25,
+   "mddPct": 12.173,
+   "marginPP": 2.827,
+   "ann252Pct": 3.079,
+   "annCalPct": 2.965,
+   "marginOverSingle": 1.919,
+   "marginOverFull": 1.05,
+   "passesMarginRule": true
+  },
+  {
+   "R_pct": 20,
+   "E_pct": 35,
+   "mddPct": 17.234,
+   "marginPP": 2.766,
+   "ann252Pct": 3.327,
+   "annCalPct": 3.204,
+   "marginOverSingle": 1.878,
+   "marginOverFull": 1.027,
+   "passesMarginRule": true
+  },
+  {
+   "R_pct": 25,
+   "E_pct": 45,
+   "mddPct": 22.102,
+   "marginPP": 2.898,
+   "ann252Pct": 3.527,
+   "annCalPct": 3.396,
+   "marginOverSingle": 1.967,
+   "marginOverFull": 1.077,
+   "passesMarginRule": true
+  },
+  {
+   "R_pct": 30,
+   "E_pct": 55,
+   "mddPct": 26.792,
+   "marginPP": 3.208,
+   "ann252Pct": 3.677,
+   "annCalPct": 3.541,
+   "marginOverSingle": 2.178,
+   "marginOverFull": 1.192,
+   "passesMarginRule": true
+  }
+ ],
+ "caliber": [
+  {
+   "key": "cal_simplified",
+   "label": "账户层简化口径 × 日历单维",
+   "mddMinPct": 19.627,
+   "mddMaxPct": 20.928,
+   "rangePP": 1.301,
+   "used": false,
+   "note": "初稿误用的数"
+  },
+  {
+   "key": "cal_main",
+   "label": "主口径 × 日历单维",
+   "mddMinPct": 19.691,
+   "mddMaxPct": 20.924,
+   "rangePP": 1.233,
+   "used": false,
+   "note": "q63 → calQ"
+  },
+  {
+   "key": "single_main",
+   "label": "主口径 × 单变量极差",
+   "mddMinPct": 18.609,
+   "mddMaxPct": 20.082,
+   "rangePP": 1.473,
+   "used": true,
+   "note": "11 个单维变体，每次只动一维"
+  },
+  {
+   "key": "single_main_cal",
+   "label": "主口径 × 单变量 + 日历",
+   "mddMinPct": 18.609,
+   "mddMaxPct": 20.924,
+   "rangePP": 2.315,
+   "used": false,
+   "note": "联合极差"
+  },
+  {
+   "key": "grid160",
+   "label": "主口径 × 全 160 格（R=20% 行）",
+   "mddMinPct": 18.232,
+   "mddMaxPct": 20.627,
+   "rangePP": 2.395,
+   "used": false,
+   "note": "多维同时变化"
+  },
+  {
+   "key": "grid160_cal",
+   "label": "主口径 × 全 160 格 + 日历",
+   "mddMinPct": 18.232,
+   "mddMaxPct": 20.924,
+   "rangePP": 2.692,
+   "used": false,
+   "note": "最坏联合极差"
+  }
+ ],
+ "mainCaliber": {
+  "key": "single_main",
+  "rangePP": 1.473
+ },
+ "worstCaliber": {
+  "key": "grid160_cal",
+  "rangePP": 2.692
+ },
+ "stress": {
+  "totalCells": 36,
+  "evaluated": 35,
+  "invalid": 1,
+  "maxMddOverR_pct": 255,
+  "maxMddOverR_at": {
+   "id": "B",
+   "pick": "mid",
+   "R": 30,
+   "eq": 55,
+   "mdd": 76.512
+  },
+  "slowBear": [
+   {
+    "pick": "lo",
+    "equityCumDropPct": -60,
+    "R_pct": 15,
+    "E_pct": 25,
+    "mddPct": 10.82,
+    "overR": 72.1,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "lo",
+    "equityCumDropPct": -60,
+    "R_pct": 20,
+    "E_pct": 35,
+    "mddPct": 23.425,
+    "overR": 117.1,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "lo",
+    "equityCumDropPct": -60,
+    "R_pct": 25,
+    "E_pct": 45,
+    "mddPct": 41.116,
+    "overR": 164.5,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "lo",
+    "equityCumDropPct": -60,
+    "R_pct": 30,
+    "E_pct": 55,
+    "mddPct": 64.917,
+    "overR": 216.4,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "mid",
+    "equityCumDropPct": -65,
+    "R_pct": 15,
+    "E_pct": 25,
+    "mddPct": 11.814,
+    "overR": 78.8,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "mid",
+    "equityCumDropPct": -65,
+    "R_pct": 20,
+    "E_pct": 35,
+    "mddPct": 25.658,
+    "overR": 128.3,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "mid",
+    "equityCumDropPct": -65,
+    "R_pct": 25,
+    "E_pct": 45,
+    "mddPct": 46.289,
+    "overR": 185.2,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "mid",
+    "equityCumDropPct": -65,
+    "R_pct": 30,
+    "E_pct": 55,
+    "mddPct": 76.512,
+    "overR": 255,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "hi",
+    "equityCumDropPct": -70,
+    "R_pct": 15,
+    "E_pct": 25,
+    "mddPct": 12.202,
+    "overR": 81.3,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "hi",
+    "equityCumDropPct": -70,
+    "R_pct": 20,
+    "E_pct": 35,
+    "mddPct": 28.211,
+    "overR": 141.1,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "hi",
+    "equityCumDropPct": -70,
+    "R_pct": 25,
+    "E_pct": 45,
+    "mddPct": 52.937,
+    "overR": 211.7,
+    "status": "已评估（人工构造、非历史事实、非预测；仅机制/倍数披露）"
+   },
+   {
+    "pick": "hi",
+    "equityCumDropPct": -70,
+    "R_pct": 30,
+    "E_pct": 55,
+    "mddPct": null,
+    "overR": null,
+    "status": "不可评估（人工构造情景物理越界）"
+   }
+  ]
+ },
+ "withdrawnClaims": [
+  {
+   "claim": "约 2 倍口径极差",
+   "status": "已撤销",
+   "mustAppear": [
+    "1.473",
+    "2.692"
+   ],
+   "reason": "分子 2.7pp 除以错误的 1.301pp；对全网格极差实际仅 1.00~1.19 倍"
+  },
+  {
+   "claim": "极端下跌亏到 R 的 1.3~1.5 倍（E=55%）",
+   "status": "已撤销",
+   "mustAppear": [
+    "2.16",
+    "2.55"
+   ],
+   "reason": "1.3~1.5 是 E=40% 的数，被错挂到 E=55%；E=55% 真实为 2.16~2.55 倍，最坏档物理越界"
+  },
+  {
+   "claim": "第 5 条按构造不触发",
+   "status": "已撤销",
+   "mustAppear": [
+    "边界敏感"
+   ],
+   "reason": "160 口径变体中有 4 处各自独立即可使 R=20% 触发 1 次，应表述为「边界敏感、非结构性免疫」"
+  }
+ ]
+}
