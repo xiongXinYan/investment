@@ -379,145 +379,145 @@
    "from": "alloc_data.js",
    "to": "src/alloc_data.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "第一轮配置敏感性数据生成器 → data/derived/alloc_data.json"
   },
   {
    "from": "alloc_report.js",
    "to": "src/alloc_report.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "渲染 reports/archive/配置调整报告_v1.2.html"
   },
   {
    "from": "bt_data.js",
    "to": "src/bt_data.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "第一轮 v1.3 择时数据包（require bt_engine.js）→ bt_data.json"
   },
   {
    "from": "bt_engine.js",
    "to": "src/bt_engine.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "v1.2 择时引擎（V0/S1/S2/S3 分级）。被 3 个历史生成器 require，删则三份历史报告不可复现"
   },
   {
    "from": "bt_engine_v1.1_archive.js",
    "to": "src/bt_engine_v1.1_archive.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "v1.1 引擎字节快照，仅作对照，无人 require"
   },
   {
    "from": "bt_extended.js",
    "to": "src/bt_extended.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "第二轮扩展验证：真实股息率 / 估值证伪 / 极端路径 → extended_data.json"
   },
   {
    "from": "bt_final.js",
    "to": "src/bt_final.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "第三轮常数敞口引擎 → final_audit_data.json（phase5_run 用它做 V0 逐位对齐）"
   },
   {
    "from": "bt_r_clause.js",
    "to": "src/bt_r_clause.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "bt_report.js",
    "to": "src/bt_report.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "渲染 reports/archive/回测报告_卖出规则_2026-11-06.html"
   },
   {
    "from": "data_audit.js",
    "to": "src/data_audit.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "execution_simulator.js",
    "to": "src/execution_simulator.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "ext_report.js",
    "to": "src/ext_report.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "渲染 reports/archive/回测报告_扩展验证_2026-11-07.html"
   },
   {
    "from": "final_report.js",
    "to": "src/final_report.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "渲染 reports/archive/回测报告_最终方案审计_2026-11-07.html"
   },
   {
    "from": "manifest.js",
    "to": "src/manifest.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "metrics_v16.js",
    "to": "src/metrics_v16.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "opt_report.js",
    "to": "src/opt_report.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "渲染 reports/archive/回测报告_修正版_2026-11-07.html"
   },
   {
    "from": "phase2_baseline.js",
    "to": "src/phase2_baseline.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "第四轮 P2 基线探针 → data/processed/phase2_baseline_data.json"
   },
   {
    "from": "phase2_indices.js",
    "to": "src/phase2_indices.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "phase3_quant_probe.js",
    "to": "src/phase3_quant_probe.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "第四轮 P3 量化探针（只出控制台结论，无文件产物）"
   },
   {
    "from": "phase5_run.js",
    "to": "src/phase5_run.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "phase5_sensitivity.js",
    "to": "src/phase5_sensitivity.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "phase6_stress_v16.js",
    "to": "src/phase6_stress_v16.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   },
   {
    "from": "probe_valuation.js",
    "to": "src/probe_valuation.js",
    "action": "archive",
-   "reason": "历史轮次引擎/报告生成器。保留可复现性，但不参与 v1.6 任何数字；批次 B 再按角色细分"
+   "reason": "估值证伪探针 → data/derived/final_team_notes.json 的估值部分"
   },
   {
    "from": "valuation_series.js",
    "to": "src/valuation_series.js",
    "action": "keep",
-   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（阶段二再拆子目录）"
+   "reason": "v1.6 正式链路。扁平放在 src/ 一级，是为了不打断 require 图（批次 B 再拆子目录）"
   }
  ]
 }
