@@ -1,0 +1,45 @@
+name: verify
+
+# 每次推送都跑同一套闸门。
+# 存在的理由：本地能跑通不等于仓库能跑通——漏提交一个新文件、或者改了代码没改数据，
+# 本地因为「文件还在磁盘上」看不出问题，CI 里一 clone 就露出来。
+# 顺序与 run_all.js 的 GATES 一致；任何一道失败即红。
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 仓库无第三方依赖，不需要 npm install。
+      - name: 闸门（9 道）
+        run: npm test
+
+      # 不变量与溯源都带负向自证：证明这些检查真的能抓到错，而不是永远绿灯。
+      - name: 负向自证（破坏数据，检查必须失败）
+        run: |
+          node tests/test_engine_invariants.js --negative
+          node tests/test_report_consistency.js --negative
+
+      # 完整重算：会重跑主回测与压力补跑。慢，但能抓到「数据改了没重算」。
+      - name: 完整重算
+        run: npm run test:full
+
+      - name: 重算后工作区应无实质变化
+        run: |
+          git status --porcelain
+          # 只允许时间戳类字段变化；若出现 .js 或 .md 改动，说明重算改变了逻辑输出
+          if git status --porcelain | grep -E '\.(js|md)$'; then
+            echo "::error::重算改动了源码或文档，说明结果不可复现"
+            exit 1
+          fi

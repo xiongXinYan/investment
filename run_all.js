@@ -61,6 +61,8 @@ const GATES = [
   { label: '数据审计（11 项，硬错误拒绝出数）', file: 'src/data_audit.js', args: ['--quiet'] },
   { label: '配置登记（config 与代码 34 项一致）', file: 'config/verify_config.js' },
   { label: '指标源生成（四档 R→E + 六种极差）', file: 'src/metrics_v16.js' },
+  { label: '引擎不变量（46 项，含 T+1 / 无负现金）', file: 'tests/test_engine_invariants.js', args: ['--negative'] },
+  { label: '数据溯源（27 项，来源/口径/哈希三方一致）', file: 'tests/test_data_provenance.js' },
   { label: '报告一致性（MD / HTML / README）', file: 'tests/test_report_consistency.js' },
   { label: '回归基线（17 用例整条净值序列）', file: 'tests/test_regression.js' },
   { label: '台账逻辑（浮点边界 / 空行守卫）', file: 'tests/test_ledger_v16.js' },

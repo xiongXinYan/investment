@@ -12,13 +12,16 @@
     "stress": "node src/phase6_stress_v16.js",
     "metrics": "node src/metrics_v16.js",
     "report": "node src/manifest.js",
-    "ledger:test": "node tests/test_ledger_v16.js"
+    "ledger:test": "node tests/test_ledger_v16.js",
+    "test:invariants": "node tests/test_engine_invariants.js --negative",
+    "test:provenance": "node tests/test_data_provenance.js"
   },
   "engines": {
     "node": ">=18"
   },
   "notes": {
     "入口": "npm test = 四道闸门（快）；npm run test:full = 闸门 + 重算（慢但完整）",
-    "关于现有脚本名": "根目录脚本名是历史遗留（phase5_run.js 等）。目录迁移后 scripts 路径随迁移清单调整，语义不变。见 docs/engineering/迁移清单_v1.0.md"
+    "关于现有脚本名": "根目录脚本名是历史遗留（phase5_run.js 等）。目录迁移后 scripts 路径随迁移清单调整，语义不变。见 docs/engineering/迁移清单_v1.0.md",
+    "闸门": "npm test = 9 道闸门（约 1 秒）：数据审计 / 配置登记 / 指标源 / 引擎不变量 / 数据溯源 / 报告一致性 / 回归基线 / 台账逻辑 / 回测指纹"
   }
 }
