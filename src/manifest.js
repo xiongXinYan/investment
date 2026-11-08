@@ -87,7 +87,10 @@ const GENERATED = new Set([
   'manifest.json', 'data_audit_report.json', 'data_manifest.json', 'metrics_v16.json',
   'phase5_backtest_data.json', 'phase6_stress_v16.json', 'regression_baseline.json'
 ]);
-const dirtyAll = dirtyRaw ? dirtyRaw.split('\n').filter(Boolean).map(l => l.slice(3)) : [];
+// 注意：仓库若开了 status.branch，`git status --porcelain` 会输出 `## main...origin/main`
+// 之类的分支头。不过滤掉的话，它会被当成「4 个脏文件名」写进指纹（实际发生过）。
+const dirtyAll = dirtyRaw ? dirtyRaw.split('\n')
+  .filter(l => l && !l.startsWith('##')).map(l => l.slice(3)) : [];
 const dirtyFiles = dirtyAll.filter(f => !GENERATED.has(path.basename(f)));
 const dirtyGenerated = dirtyAll.filter(f => GENERATED.has(path.basename(f)));
 
