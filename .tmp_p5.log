@@ -1,0 +1,43 @@
+===== Phase 5 主回测（真实历史路径 · 正式绩效数字）=====
+【V0 对齐】整批有效前提通过=true；四档 maxAbsDiff=[0/0/0/0]；(iv) maxAbsDiff=0
+【预注册主检验 R=0.20/eqBase=0.40/q63/review20】四路径绩效（cagr/mdd/vol/sharpe/胜率/换手/超额vsHS300, 单位% 或 pp）
+  (i) cagr=3.433 mdd=19.691 vol=8.242 sharpe=0.1441 winRate=52.373 turnover=1.747253 excessVsHS300=2.581 triggers=0
+  (ii) cagr=3.433 mdd=19.691 vol=8.242 sharpe=0.1441 winRate=52.373 turnover=1.747253 excessVsHS300=2.581 triggers=0
+  (iii) cagr=3.433 mdd=19.691 vol=8.242 sharpe=0.1441 winRate=52.373 turnover=1.747253 excessVsHS300=2.581 triggers=0
+  (iv) cagr=2.936 mdd=9.746 vol=4.124 sharpe=0.1676 winRate=53.302 turnover=1.111811 excessVsHS300=2.084 triggers=0
+  (ii)≡(i) maxAbsDiff=0；(iii)≡(i) maxAbsDiff=0（触发 0 次恒等）
+【三层差值】
+  (ii)-(i) CAGR=0pp/年, MDD=0pp | 总效应（降E+触发时机+恢复摩擦的混合效应）
+  (iv)-(i) CAGR=-0.497pp/年, MDD=-9.945pp | 纯静态降 E 效应（4,089 日样本可估计）
+  (ii)-(iv) CAGR=0.497pp/年, MDD=9.945pp | 时机+恢复摩擦的真正净贡献（量化侧重点）
+  净效应判定=不可评估（not estimable）（触发 0 次；(ii)-(iv) 退化为 (i)-(iv) 镜像，不含触发信息）
+【A 表】主口径四档 R 触发次数=[0/0/0/0]；独立事件(gap63)=0 ⇒ 不可评估
+  calQ 敏感性 R=20% 触发日=2016-01-26；收紧 R 触发日=2010-06-29/2015-08-24/2015-08-25
+【B 表】基准 HS300 cagr=0.852% / 纯现金 cagr=2.245%；rf=2.245%
+  4 折 walk-forward 含信息折数=1/4（3 折零信息、折间重叠、非样本外验证）
+  滚动 252 日窗口 MDD: min=2.357 median=6.332 max=19.724，窗口数=61
+【逐卡判定】C0=数据不足 / C1(C1′)=数据不足 / C2=通过（限「静态降 E 前半命题」）
+【C2】E′ 结构档 E×{1.0,0.75,0.5} 四档整体重算；(iv′) 增跑=true（7 条）；q63 单调=true
+【R=20%/E=40% 三档 q63 MDD】f=1 E′=40%: 19.691% | f=0.75 E′=30%: 14.728% | f=0.5 E′=20%: 9.746%
+已写出 phase5_backtest_data.json（主体）；C 表全矩阵/压力路径由 phase5_sensitivity.js 追加
+本内容为研究分析，不构成投资建议。
+
+===== Phase 5 敏感性诊断（C 表 / 稳健性 / 命题判据）=====
+【V0 断言】mixVar vs mixRef maxAbsDiff=0（应为 0）
+【C 表真实历史口径网格】6 维标签=权重/现金利率/成本/成交/再平衡频率/股息处理；单元数=160（160 变体 × 4 档 R）
+  单变量扰动 R=20% 基准 MDD=19.691%；现金-1pp MDD=20.006% 触发=1；carry归零 MDD=20.082% 触发=1
+  q63 MDD=19.691% / calQ MDD=20.924%（并列披露、不并列为可选参数、不相减成区间）
+  股息三分法：①carry计入 19.691% / ②carry归零(下界压力) 20.082% / ③季节性DPS 数据不足本轮未检验
+【符号一致性计数】真实历史矩阵 96 单元：{"total":96,"positive":0,"negative":18,"zero":78,"triggeredCells":18,"zeroTriggerCells":78,"ratio":0}
+  q63: {"total":48,"positive":0,"negative":0,"zero":48,"triggeredCells":0,"zeroTriggerCells":48,"ratio":null} | calQ: {"total":48,"positive":0,"negative":18,"zero":30,"triggeredCells":18,"zeroTriggerCells":30,"ratio":0}
+  8 锚点方向触发次数=主口径:0 现金-1pp:1 全期1.3%前瞻:1 carry归零(下界压力):1 权重70/30:0 现金+1pp:0 无成本T+0:0 去T+1:0
+【压力路径 A/B/C】lo/mid/hi × 四档 R，Cholesky+固定种子(SEED_BASE=20261108)，DPS/价格分离；9 组 × 4 档 = 36 单元，已评估 35
+  【越界披露】不可评估 1 单元：B/hi×R=30(-105%)；名义跌幅越过 -100% 物理下限，绩效字段留空(null)，不截断/不外推/不伪造 MDD=0
+  A 路径 D1 分离(份额×固定DPS - 市值×历史dy)：lo:42.1% / mid:51.49% / hi:71.83%（随跌幅单调）
+  全部标注「人工构造、非历史事实、非预测」；不得进主结论/选参数/称样本外验证
+【ETF 6 组档位】权威口径 6 组仅登记；强制触发符号计数 36 单元；主口径触发 0 次 ⇒ 无成交事件 ⇒ 数据不足、不给点估计
+【未建模摩擦】6 项逐项定性披露（④000922 ETF 历史缺席=幸存者偏差、非摩擦）；成本科目分离（价格偏移 vs 占ADV比例）
+【命题三段判据】行业 A1~A4 / 量化 Q1~Q3+A-1~A-9 / 红利 D1~D3 / ETF E1~E3 / 三卡 9 命题，全部汇总入 propositions
+  2020 段 2.68pp 接近失效边界逐段报告、不平均；E1 数据不足分支标注「工具可得性不成立、非冲击成本问题」
+已写回 phase5_backtest_data.json（tables.C / sensitivity / propositions / robustness）
+本内容为研究分析，不构成投资建议。

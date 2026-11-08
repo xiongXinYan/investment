@@ -19,6 +19,12 @@ const obs = RAW.rows.map(([d, hs, hl]) => {
 }).filter(o => o.idx >= 0);
 
 // 线性插值（观测区间外取端点值）
+//
+// ⚠ 已知前视：对 a.idx < i < b.idx 的每一日，本函数用【下一个】观测点 b 的值参与插值，
+//   而 b 是在 i 之后最多半年才可得的数据。审计（data_audit.js 检查项 7.dy.lookahead）
+//   实测影响：CAGR −0.006pp/年、MDD +0.057pp（E=35% 档），不影响任何结论。
+//   默认保持线性插值，是为了让 v1.0~v1.6 已发布数字逐位可复现；
+//   无前视版本见 interpStep / dyHS_nl / dyHL_nl，正式口径切换排在下一版。
 function interp(col, asset) {
   const out = new Array(N);
   let k = 0;
@@ -31,12 +37,26 @@ function interp(col, asset) {
   return out;
 }
 
+// 阶梯插值（仅用截至当日已发生的观测，无前视）
+function interpStep(col, asset) {
+  const out = new Array(N);
+  let k = 0;
+  for (let i = 0; i < N; i++) {
+    while (k < obs.length - 1 && obs[k + 1].idx <= i) k++;
+    out[i] = obs[k][asset][col];
+  }
+  return out;
+}
+
 const C = { PE: 0, PB: 1, DY: 2, ERP: 3, ERPDIV: 4 };
 const series = (col, asset) => interp(col, asset);
 
 // 股息率：百分数 -> 小数
 const dyHS = series(C.DY, 'hs').map(x => x / 100);
 const dyHL = series(C.DY, 'hl').map(x => x / 100);
+// 无前视版本（阶梯，仅用已发生观测）——供审计对照与下一版正式口径使用
+const dyHS_nl = interpStep(C.DY, 'hs').map(x => x / 100);
+const dyHL_nl = interpStep(C.DY, 'hl').map(x => x / 100);
 const peHS = series(C.PE, 'hs'), pbHS = series(C.PB, 'hs');
 const erpHS = series(C.ERP, 'hs'), erpDivHS = series(C.ERPDIV, 'hs');
 
@@ -80,6 +100,7 @@ const stats = {
 
 module.exports = {
   N, PXDATES, obs, dyHS, dyHL, peHS, pbHS, erpHS, erpDivHS,
+  dyHS_nl, dyHL_nl, interpStep,
   vDoc: doc.out, vExp: exp.out, detailDoc: doc.detail, detailExp: exp.detail,
   annual, stats, RAW
 };

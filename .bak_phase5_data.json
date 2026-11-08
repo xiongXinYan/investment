@@ -1,0 +1,3303 @@
+{
+ "meta": {
+  "generated": "2026-11-07",
+  "phase": "Phase 5 正式回测（真实历史路径主回测 + 稳健性检验）",
+  "author": "data-backtest-engineer 袁据实",
+  "note": "本轮第一次允许产出策略绩效数字；此前「非绩效」纪律仅约束 bt_r_clause.js 脚手架自检",
+  "engine": "runRClause/mixRef（bt_r_clause.js，只读复用、未修改）+ met（复刻 bt_final.js:18-31）+ mixCalQ（本文件复刻 mix 日循环，仅换 calQ 时点集）",
+  "noEngineModification": "PATHS/PATH_DIFFS/PREREGISTERED_MAIN_TEST/REQUIRED_RCLAUSE_KEYS/任何默认值逐字未改",
+  "singleDataSource": "本地价格序列（东方财富 2 JSON）+ NeoData 半年度 34 点线性插值估值/股息率 + 分段现金利率假设；宏观读数/联网行业权重/ETF 实测数据不进净值、不混拼（P2 §三）",
+  "sample": {
+   "from": "2010-01-04",
+   "to": "2026-11-06",
+   "days": 4089,
+   "priceNotDivAdjusted": true,
+   "note": "价格指数不含股息；股息收益经插值股息率逐日 divCash 计入现金；现金端分段利率假设"
+  },
+  "historyBootstrapDiscipline": "v1.4 择时层 bootstrap = bt_data.js:187 的 1,000 次（block20）；v1.5 配置倾斜审计 = bt_final.js:124 的 2,000 次（种子 sd=20261107）；对象不同、分列、不得互引；本文件不对状态机做任何 block bootstrap 显著性推断",
+  "historyBacktestDisclaimer": "历史回测不代表未来收益"
+ },
+ "dataBaseline": {
+  "title": "一、数据基线",
+  "datasets": [
+   {
+    "id": "①-1",
+    "name": "沪深300 日收盘",
+    "code": "000300",
+    "range": "2010-01-04~2026-11-06 日频",
+    "rows": 4089,
+    "adjust": "价格指数，不含股息、无复权",
+    "fields": "data.klines[]=\"YYYY-MM-DD,收盘价\"",
+    "tool": "东方财富公开接口本地快照（fs.readFileSync，无新增 MCP）",
+    "fetchDate": "快照 2026-11-06 / 计算 2026-11-07",
+    "file": "hs300_daily_2010_2026.json"
+   },
+   {
+    "id": "①-2",
+    "name": "中证红利 日收盘",
+    "code": "000922",
+    "range": "2010-01-04~2026-11-06 日频",
+    "rows": 4089,
+    "adjust": "价格指数，不含股息、无复权",
+    "fields": "data.klines[]",
+    "tool": "同上",
+    "fetchDate": "同上",
+    "file": "csi_dividend_2010_2026.json"
+   },
+   {
+    "id": "②",
+    "name": "半年度估值/股息率 + 逐日插值",
+    "code": "000300.SH/000922.SH",
+    "range": "半年度 34 观测点→插值 4,089 日",
+    "rows": 34,
+    "adjust": "不适用",
+    "fields": "pe_ttm/pb_lf/dividend_ratio/risk_premium；dyHS[]/dyHL[]",
+    "tool": "NeoData index_valuation",
+    "fetchDate": "fetched 2026-11-07",
+    "file": "valuation_semiannual_2010_2026.json / valuation_series.js"
+   },
+   {
+    "id": "③",
+    "name": "分段现金利率（假设）",
+    "code": "现金端",
+    "range": "2010-2014=3.0% / 2015-2021=2.3% / 2022-2026=1.3%",
+    "rows": 4089,
+    "adjust": "不适用",
+    "fields": "SEG_RATE[] 逐日数组",
+    "tool": "v1.5 §2.3 / README 假设",
+    "fetchDate": "2026-11-07",
+    "file": "phase2_indices.js 内置"
+   }
+  ],
+  "quality": {
+   "dateAligned": true,
+   "duplicateDates": 0,
+   "nonMonotonicDates": 0,
+   "nonPositivePrices": 0,
+   "missingNumeric": 0,
+   "valuationObs": 34,
+   "firstPoint": "HS300 3535.23 / 红利 3532.21",
+   "lastPoint": "HS300 4056.71 / 红利 5531.01（本轮固定快照）",
+   "corrFull": 0.8775,
+   "note": "价格指数不含股息靠插值股息率近似；幸存者偏差只做定性检查（成分股历史变更未纳入）；停牌/复权不适用（指数点位序列）"
+  },
+  "singleSourceDeclaration": "本轮整批回测（价格/基准/复权/股息/现金利率）全部来自上述单一自洽口径；基准亦在同一数据源内构造（100% HS300 价格指数 / 分段现金），未另引外部无风险利率；宏观 NeoData 读数与联网行业权重仅作情景/注释，不进引擎"
+ },
+ "backtestSetup": {
+  "title": "二、回测设置",
+  "inSample": "全期 2010-01-04~2026-11-06（4,089 交易日）为唯一主样本",
+  "outOfSample": "无独立样本外；4 折 walk-forward 折间重叠、3 折零信息、V 折首重置，仅作诊断，不得称「样本外验证」",
+  "benchmark": "同口径 100% 沪深300 价格指数 / 纯现金（分段利率累乘）",
+  "riskFreeRate": "纯现金年化 2.245%（分段利率假设，未另引外部无风险利率）",
+  "initialCapital": "归一化 ¥1（份额法，绩效为比例口径，与本金规模无关）",
+  "cost": "费 5bp + 滑点 10bp（双边，成本=成交额×(tradeFee+slippage)）",
+  "execLag": 1,
+  "rebalanceTiming": "q63（(i-S)%63==0 季度末，收盘后判定、次日收盘价成交 T+1）；calQ 单列 C 表",
+  "dividendHandling": "carry 计入（divCash=(vD·dyD+vH·dyH)/252 逐日计入现金）；股息税主口径不重复计",
+  "feeAnn": 0.005,
+  "interval": 63,
+  "w": 0.25,
+  "rebal": "reset",
+  "iterationDiscipline": "数据集、成本、样本区间、基准与无风险利率假设全部保持不变，只更换 rClause 输入",
+  "preregisteredMainTest": {
+   "status": "预注册、不得事后更改",
+   "baseline": "B.P_MAIN_OPT",
+   "quarterMode": "q63",
+   "path": "真实历史路径（非构造）",
+   "R": 0.2,
+   "eqBase": 0.4,
+   "execLag": 1,
+   "slippage": 0.001,
+   "tradeFee": 0.0005,
+   "recoverMode": "review",
+   "reviewLagDays": 20,
+   "compare": "主比较 (ii) 与 (iv)，同时报 (i)(iii)",
+   "changePolicy": "预注册、不得事后更改",
+   "verbatimSource": "round4_lead_rulings.md §3.4 / round4_phase3_quant.md §3.3 / bt_r_clause.js PREREGISTERED_MAIN_TEST"
+  }
+ },
+ "v0Alignment": {
+  "title": "V0 逐位对齐校验（整批结果有效前提）",
+  "pass": true,
+  "fourTier": [
+   {
+    "R": 15,
+    "eq": 30,
+    "navLen": 4089,
+    "maxAbsDiff": 0,
+    "v0MddPct": 14.728,
+    "refMddPct": 14.728,
+    "auditMddPct": 14.728,
+    "pass": true
+   },
+   {
+    "R": 20,
+    "eq": 40,
+    "navLen": 4089,
+    "maxAbsDiff": 0,
+    "v0MddPct": 19.691,
+    "refMddPct": 19.691,
+    "auditMddPct": 19.691,
+    "pass": true
+   },
+   {
+    "R": 25,
+    "eq": 50,
+    "navLen": 4089,
+    "maxAbsDiff": 0,
+    "v0MddPct": 24.469,
+    "refMddPct": 24.469,
+    "auditMddPct": 24.469,
+    "pass": true
+   },
+   {
+    "R": 30,
+    "eq": 55,
+    "navLen": 4089,
+    "maxAbsDiff": 0,
+    "v0MddPct": 26.792,
+    "refMddPct": 26.792,
+    "auditMddPct": 26.792,
+    "pass": true
+   }
+  ],
+  "pathIV": {
+   "eq": 0.2,
+   "navLen": 4089,
+   "maxAbsDiff": 0,
+   "pass": true
+  },
+  "note": "四档 R 各 4,089 点 + 路径 (iv) 全部 maxAbsDiff=0；与 final_audit_data.json finalPlan.table.mdd 逐位一致；未对齐则整批作废重跑"
+ },
+ "preregMainTest": {
+  "spec": {
+   "status": "预注册、不得事后更改",
+   "baseline": "B.P_MAIN_OPT",
+   "quarterMode": "q63",
+   "path": "真实历史路径（非构造）",
+   "R": 0.2,
+   "eqBase": 0.4,
+   "execLag": 1,
+   "slippage": 0.001,
+   "tradeFee": 0.0005,
+   "recoverMode": "review",
+   "reviewLagDays": 20,
+   "compare": "主比较 (ii) 与 (iv)，同时报 (i)(iii)",
+   "changePolicy": "预注册、不得事后更改",
+   "verbatimSource": "round4_lead_rulings.md §3.4 / round4_phase3_quant.md §3.3 / bt_r_clause.js PREREGISTERED_MAIN_TEST"
+  },
+  "pathsPerf": {
+   "i": {
+    "cagr": 3.433,
+    "mdd": 19.691,
+    "vol": 8.242,
+    "total": 72.913,
+    "winRate": 52.373,
+    "sharpe": 0.1441,
+    "excessVsHS300": 2.581,
+    "excessVsCash": 1.188,
+    "turnover": 1.747253,
+    "feePaid": 0.002621,
+    "cutCount": 0,
+    "recoverCount": 0,
+    "rebalCount": 64,
+    "triggers": 0
+   },
+   "ii": {
+    "cagr": 3.433,
+    "mdd": 19.691,
+    "vol": 8.242,
+    "total": 72.913,
+    "winRate": 52.373,
+    "sharpe": 0.1441,
+    "excessVsHS300": 2.581,
+    "excessVsCash": 1.188,
+    "turnover": 1.747253,
+    "feePaid": 0.002621,
+    "cutCount": 0,
+    "recoverCount": 0,
+    "rebalCount": 64,
+    "triggers": 0
+   },
+   "iii": {
+    "cagr": 3.433,
+    "mdd": 19.691,
+    "vol": 8.242,
+    "total": 72.913,
+    "winRate": 52.373,
+    "sharpe": 0.1441,
+    "excessVsHS300": 2.581,
+    "excessVsCash": 1.188,
+    "turnover": 1.747253,
+    "feePaid": 0.002621,
+    "cutCount": 0,
+    "recoverCount": 0,
+    "rebalCount": 64,
+    "triggers": 0
+   },
+   "iv": {
+    "cagr": 2.936,
+    "mdd": 9.746,
+    "vol": 4.124,
+    "total": 59.919,
+    "winRate": 53.302,
+    "sharpe": 0.1676,
+    "excessVsHS300": 2.084,
+    "excessVsCash": 0.691,
+    "turnover": 1.111811,
+    "feePaid": 0.001668,
+    "cutCount": 0,
+    "recoverCount": 0,
+    "rebalCount": 64,
+    "triggers": 0
+   }
+  },
+  "pathIdentity": {
+   "ii_vs_i_maxAbsDiff": 0,
+   "iii_vs_i_maxAbsDiff": 0
+  }
+ },
+ "threeLayerDiffs": {
+  "metricNote": "差值 = 前路径 - 后路径；CAGR 单位 pp/年、MDD 单位 pp（回撤幅度），两套量纲不可相减/互证",
+  "diffs": [
+   {
+    "id": "(ii)-(i)",
+    "meaning": "总效应（降E+触发时机+恢复摩擦的混合效应）",
+    "cagrPP": 0,
+    "mddPP": 0
+   },
+   {
+    "id": "(iv)-(i)",
+    "meaning": "纯静态降 E 效应（4,089 日样本可估计）",
+    "cagrPP": -0.497,
+    "mddPP": -9.945
+   },
+   {
+    "id": "(ii)-(iv)",
+    "meaning": "时机+恢复摩擦的真正净贡献（量化侧重点）",
+    "cagrPP": 0.497,
+    "mddPP": 9.945
+   }
+  ],
+  "netEffectAssessment": {
+   "verdict": "不可评估（not estimable）",
+   "reasons": [
+    "主口径（q63 + 真实历史 + R=0.20/eqBase=0.40）触发次数 = 0，无被处理单元（no treated units）",
+    "(ii) 与 (i) 逐位恒等（maxAbsDiff=0），减半/锁定/恢复三个动作从未发生",
+    "故 (ii)-(iv) 在数值上退化为 (i)-(iv) 的镜像 =「纯静态降 E 效应」的相反数，不携带触发时机或恢复摩擦信息",
+    "cutOnce 下全期处理事件 ≤1、独立触发事件 <3 ⇒ 方差/置信区间/功效数值数学上不存在；禁止 p 值/CI/功效",
+    "不得写成「条款有效」「条款无效」「净贡献 +0.497pp」；该 0.497pp 是静态降 E 的镜像，不是条款贡献"
+   ],
+   "noiseRule": "|净效应| < 2×总成本 判「噪声主导、符号不可判定」；本口径触发式成本=0（无 cut/recover），但触发 0 次已先落「不可评估」，不进入噪声判定",
+   "insufficientRule": "独立触发事件 <3 判「数据不足」；本口径独立触发事件 = 0",
+   "zeroTriggerTemplate": "在【口径：权重75/25 | 现金分段3.0/2.3/1.3% | 成本费5bp+滑点10bp | 成交T+1 | 再平衡q63 | 股息carry计入】、【样本区间 2010-01-04~2026-11-06】、【R=20%/E=40%/路径(ii)】下，该路径触发次数为 0，条款的净效应不可评估（not estimable）。这既不构成「条款有效」的证据，也不构成「条款无效」的证据。可报告的仅为：①该口径下条款处于休眠状态；②该口径下策略净值与 V0 对照基线恒等（恒等式、非检验结论）；③距触发的最小余量 0.309pp；④使触发成立的最小口径扰动为「现金 -1pp / 全期 1.3% / 股息 carry 归零 / q63→calQ」之一，据此把「不可评估」归因于边界敏感而非市场状态。"
+  }
+ },
+ "tables": {
+  "A": {
+   "title": "A. 触发事件层（主表）",
+   "separation": "本表为判定第 5 条的主表；不含任何策略绩效数字（绩效在 B 表）",
+   "mainVerdict": "不可评估（not estimable）",
+   "mainFourR": [
+    {
+     "R": 15,
+     "eq": 30,
+     "triggerCount": 0,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "mdd": 14.728,
+     "headroomPP": 0.272,
+     "verdict": "不可评估（触发 0 次）"
+    },
+    {
+     "R": 20,
+     "eq": 40,
+     "triggerCount": 0,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "mdd": 19.691,
+     "headroomPP": 0.309,
+     "verdict": "不可评估（触发 0 次）"
+    },
+    {
+     "R": 25,
+     "eq": 50,
+     "triggerCount": 0,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "mdd": 24.469,
+     "headroomPP": 0.531,
+     "verdict": "不可评估（触发 0 次）"
+    },
+    {
+     "R": 30,
+     "eq": 55,
+     "triggerCount": 0,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "mdd": 26.792,
+     "headroomPP": 3.208,
+     "verdict": "不可评估（触发 0 次）"
+    }
+   ],
+   "zeroTriggerStatement": "在【口径：权重75/25 | 现金分段3.0/2.3/1.3% | 成本费5bp+滑点10bp | 成交T+1 | 再平衡q63 | 股息carry计入】、【样本区间 2010-01-04~2026-11-06】、【R=20%/E=40%/路径(ii)】下，该路径触发次数为 0，条款的净效应不可评估（not estimable）。这既不构成「条款有效」的证据，也不构成「条款无效」的证据。可报告的仅为：①该口径下条款处于休眠状态；②该口径下策略净值与 V0 对照基线恒等（恒等式、非检验结论）；③距触发的最小余量 0.309pp；④使触发成立的最小口径扰动为「现金 -1pp / 全期 1.3% / 股息 carry 归零 / q63→calQ」之一，据此把「不可评估」归因于边界敏感而非市场状态。",
+   "exDivCashCheck": {
+    "dimension": "股息处理",
+    "question": "跨除息日 ETF 分红现金是否计入 nav（否则 dd 虚增可能误触发）",
+    "conclusion": "引擎逐日按 divCash=(vD·dyD+vH·dyH)/252 把股息现金计入 cash，并反映在 nav_i（含当日）与 dd=1-nav_i/V 中；故不存在「分红现金未进 nav 导致 dd 虚增」的建模缺口。主口径触发 0 次，未发生误触发。",
+    "caveat": "但本地仅有半年度 34 点插值股息率、无逐日实际除息日历/权益登记日/ETF 红利到账日；无法逐笔核对「除息日 vs 分红到账日」的时点差；该项「数据待更新」，仅作定性核对留痕，不改任何绩效数字。",
+    "separateFrom": "本项是「触发判定口径」问题（分红现金是否进 nav 影响 dd），与「恢复日跨季/跨除息日耦合」「recoverIdx 分布」「E3 跨季标记」（时点问题）不是同一件事，勿合并或相互替代（候选卡 C0 §④ / 主理人 §3.7-6）。"
+   },
+   "mechanism": {
+    "note": "以下均为「非主口径」的口径敏感性/机制可运行性证据，只用于符号一致性计数与状态机执行说明，不进主检验、不进主结论、不得用于挑参数（D10/D11/量化 §3.7）",
+    "calQ_R20": {
+     "label": "calQ 日历季末 + R=0.20 真实历史（口径敏感性）",
+     "note": "真实历史价格 + calQ 再平衡日历：2016-01-26 触发 1 次；属 C 表日历敏感性，非预注册主口径",
+     "triggerCount": 1,
+     "independentEventsGap20": 1,
+     "independentEventsGap63": 1,
+     "trigger": {
+      "date": "2016-01-26",
+      "idx": 1472,
+      "dd": 0.20076057,
+      "ddPct": 20.076,
+      "cutExecDate": "2016-01-27",
+      "cutExecIdx": 1473,
+      "lockUntilDate": "2016-03-01",
+      "lockUntilIdx": 1492,
+      "recoverSignalDate": "2016-03-01",
+      "recoverSignalIdx": 1492,
+      "recoverExecDate": "2016-03-02",
+      "recoverExecIdx": 1493,
+      "recoverMode": "review",
+      "window20EndIdx": 1492,
+      "window20EndDate": "2016-03-01",
+      "cutCrossQuarter": false,
+      "recoverCrossQuarter": false
+     },
+     "eventsCountByType": {
+      "rebalance": 67,
+      "trigger": 1,
+      "cut": 1,
+      "recover-signal": 1,
+      "recover": 1
+     },
+     "counters": {
+      "cutCount": 1,
+      "recoverCount": 1,
+      "rebalCount": 67,
+      "turnover": 2.254941,
+      "feePaid": 0.003382,
+      "taxPaid": 0
+     }
+    },
+    "tightenedR": [
+     {
+      "label": "q63 + R=10（人工收紧，仅可运行性冒烟）",
+      "note": "D11：R=0.10 等收紧值仅为强制触发以验证状态机分支，非候选策略卡、非建议参数",
+      "triggerCount": 1,
+      "independentEventsGap20": 1,
+      "independentEventsGap63": 1,
+      "trigger": {
+       "date": "2010-06-29",
+       "idx": 116,
+       "dd": 0.10403471,
+       "ddPct": 10.403,
+       "cutExecDate": "2010-06-30",
+       "cutExecIdx": 117,
+       "lockUntilDate": "2010-07-27",
+       "lockUntilIdx": 136,
+       "recoverSignalDate": "2010-07-27",
+       "recoverSignalIdx": 136,
+       "recoverExecDate": "2010-07-28",
+       "recoverExecIdx": 137,
+       "recoverMode": "review",
+       "window20EndIdx": 136,
+       "window20EndDate": "2010-07-27",
+       "cutCrossQuarter": true,
+       "recoverCrossQuarter": false
+      },
+      "eventsCountByType": {
+       "rebalance": 64,
+       "trigger": 1,
+       "cut": 1,
+       "recover-signal": 1,
+       "recover": 1
+      },
+      "counters": {
+       "cutCount": 1,
+       "recoverCount": 1,
+       "rebalCount": 64,
+       "turnover": 1.937888,
+       "feePaid": 0.002907,
+       "taxPaid": 0
+      }
+     },
+     {
+      "label": "q63 + R=15（人工收紧，仅可运行性冒烟）",
+      "note": "D11：R=0.10 等收紧值仅为强制触发以验证状态机分支，非候选策略卡、非建议参数",
+      "triggerCount": 1,
+      "independentEventsGap20": 1,
+      "independentEventsGap63": 1,
+      "trigger": {
+       "date": "2015-08-24",
+       "idx": 1369,
+       "dd": 0.16958126,
+       "ddPct": 16.958,
+       "cutExecDate": "2015-08-25",
+       "cutExecIdx": 1370,
+       "lockUntilDate": "2015-09-23",
+       "lockUntilIdx": 1389,
+       "recoverSignalDate": "2015-09-23",
+       "recoverSignalIdx": 1389,
+       "recoverExecDate": "2015-09-24",
+       "recoverExecIdx": 1390,
+       "recoverMode": "review",
+       "window20EndIdx": 1389,
+       "window20EndDate": "2015-09-23",
+       "cutCrossQuarter": false,
+       "recoverCrossQuarter": false
+      },
+      "eventsCountByType": {
+       "rebalance": 64,
+       "trigger": 1,
+       "cut": 1,
+       "recover-signal": 1,
+       "recover": 1
+      },
+      "counters": {
+       "cutCount": 1,
+       "recoverCount": 1,
+       "rebalCount": 64,
+       "turnover": 2.018128,
+       "feePaid": 0.003027,
+       "taxPaid": 0
+      }
+     },
+     {
+      "label": "q63 + R=18（人工收紧，仅可运行性冒烟）",
+      "note": "D11：R=0.10 等收紧值仅为强制触发以验证状态机分支，非候选策略卡、非建议参数",
+      "triggerCount": 1,
+      "independentEventsGap20": 1,
+      "independentEventsGap63": 1,
+      "trigger": {
+       "date": "2015-08-25",
+       "idx": 1370,
+       "dd": 0.18903975,
+       "ddPct": 18.904,
+       "cutExecDate": "2015-08-26",
+       "cutExecIdx": 1371,
+       "lockUntilDate": "2015-09-24",
+       "lockUntilIdx": 1390,
+       "recoverSignalDate": "2015-09-24",
+       "recoverSignalIdx": 1390,
+       "recoverExecDate": "2015-09-25",
+       "recoverExecIdx": 1391,
+       "recoverMode": "review",
+       "window20EndIdx": 1390,
+       "window20EndDate": "2015-09-24",
+       "cutCrossQuarter": false,
+       "recoverCrossQuarter": false
+      },
+      "eventsCountByType": {
+       "rebalance": 64,
+       "trigger": 1,
+       "cut": 1,
+       "recover-signal": 1,
+       "recover": 1
+      },
+      "counters": {
+       "cutCount": 1,
+       "recoverCount": 1,
+       "rebalCount": 64,
+       "turnover": 2.028727,
+       "feePaid": 0.003043,
+       "taxPaid": 0
+      }
+     }
+    ]
+   }
+  },
+  "B": {
+   "title": "B. 策略绩效层",
+   "separation": "本表只回答「在某个固定口径下，策略表现如何」；C 表口径敏感性数字不得混入本表（量化 §5.5）",
+   "benchmarkDecl": {
+    "hs300": "同口径 100% 沪深300 价格指数买入持有（不含股息、无成本、无现金）；cagr=0.852%",
+    "cash": "同口径纯现金（分段利率 3.0/2.3/1.3% 逐日累乘）；cagr=2.245%",
+    "rf": "无风险利率 = 纯现金年化 2.245%（本轮单一数据源内的现金端假设，未另引外部无风险利率）",
+    "sharpe": "sharpe=(策略cagr% − 现金cagr%)/策略vol%，无量纲；超额为描述性（组合含股息carry+现金+季度再平衡，与纯价格指数基准非完全同口径）"
+   },
+   "mainPaths": {
+    "i": {
+     "cagr": 3.433,
+     "mdd": 19.691,
+     "vol": 8.242,
+     "total": 72.913,
+     "winRate": 52.373,
+     "sharpe": 0.1441,
+     "excessVsHS300": 2.581,
+     "excessVsCash": 1.188,
+     "turnover": 1.747253,
+     "feePaid": 0.002621,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "rebalCount": 64,
+     "triggers": 0
+    },
+    "ii": {
+     "cagr": 3.433,
+     "mdd": 19.691,
+     "vol": 8.242,
+     "total": 72.913,
+     "winRate": 52.373,
+     "sharpe": 0.1441,
+     "excessVsHS300": 2.581,
+     "excessVsCash": 1.188,
+     "turnover": 1.747253,
+     "feePaid": 0.002621,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "rebalCount": 64,
+     "triggers": 0
+    },
+    "iii": {
+     "cagr": 3.433,
+     "mdd": 19.691,
+     "vol": 8.242,
+     "total": 72.913,
+     "winRate": 52.373,
+     "sharpe": 0.1441,
+     "excessVsHS300": 2.581,
+     "excessVsCash": 1.188,
+     "turnover": 1.747253,
+     "feePaid": 0.002621,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "rebalCount": 64,
+     "triggers": 0
+    },
+    "iv": {
+     "cagr": 2.936,
+     "mdd": 9.746,
+     "vol": 4.124,
+     "total": 59.919,
+     "winRate": 53.302,
+     "sharpe": 0.1676,
+     "excessVsHS300": 2.084,
+     "excessVsCash": 0.691,
+     "turnover": 1.111811,
+     "feePaid": 0.001668,
+     "cutCount": 0,
+     "recoverCount": 0,
+     "rebalCount": 64,
+     "triggers": 0
+    }
+   },
+   "identityCheck": {
+    "ii_vs_i_maxAbsDiff": 0,
+    "iii_vs_i_maxAbsDiff": 0,
+    "note": "主口径触发 0 次 ⇒ (ii)(iii) 与 (i) 逐位恒等；此为恒等式，非检验结论"
+   },
+   "costBeforeAfter": {
+    "note": "成本后=预注册主口径（费5bp+滑点10bp+T+1）；成本前=COST0（无成本/T+0），只动成本/成交 1 维；成本前属描述性敏感性，不替换主检验、不改结论",
+    "after": {
+     "i": {
+      "cagr": 3.433,
+      "mdd": 19.691,
+      "vol": 8.242,
+      "total": 72.913,
+      "winRate": 52.373,
+      "sharpe": 0.1441,
+      "excessVsHS300": 2.581,
+      "excessVsCash": 1.188,
+      "turnover": 1.747253,
+      "feePaid": 0.002621,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "ii": {
+      "cagr": 3.433,
+      "mdd": 19.691,
+      "vol": 8.242,
+      "total": 72.913,
+      "winRate": 52.373,
+      "sharpe": 0.1441,
+      "excessVsHS300": 2.581,
+      "excessVsCash": 1.188,
+      "turnover": 1.747253,
+      "feePaid": 0.002621,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iv": {
+      "cagr": 2.936,
+      "mdd": 9.746,
+      "vol": 4.124,
+      "total": 59.919,
+      "winRate": 53.302,
+      "sharpe": 0.1676,
+      "excessVsHS300": 2.084,
+      "excessVsCash": 0.691,
+      "turnover": 1.111811,
+      "feePaid": 0.001668,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     }
+    },
+    "before": {
+     "i": {
+      "cagr": 3.528,
+      "mdd": 18.609,
+      "vol": 8.201,
+      "total": 75.516,
+      "winRate": 52.373,
+      "sharpe": 0.1564,
+      "excessVsHS300": 2.676,
+      "excessVsCash": 1.283,
+      "turnover": 1.822953,
+      "feePaid": 0,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "ii": {
+      "cagr": 3.528,
+      "mdd": 18.609,
+      "vol": 8.201,
+      "total": 75.516,
+      "winRate": 52.373,
+      "sharpe": 0.1564,
+      "excessVsHS300": 2.676,
+      "excessVsCash": 1.283,
+      "turnover": 1.822953,
+      "feePaid": 0,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iv": {
+      "cagr": 2.997,
+      "mdd": 9.136,
+      "vol": 4.099,
+      "total": 61.481,
+      "winRate": 53.327,
+      "sharpe": 0.1835,
+      "excessVsHS300": 2.145,
+      "excessVsCash": 0.752,
+      "turnover": 1.148458,
+      "feePaid": 0,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     }
+    }
+   },
+   "fourRPaths": [
+    {
+     "R": 15,
+     "eq": 30,
+     "i": {
+      "cagr": 3.209,
+      "mdd": 14.728,
+      "vol": 6.182,
+      "total": 66.936,
+      "winRate": 52.691,
+      "sharpe": 0.1559,
+      "excessVsHS300": 2.357,
+      "excessVsCash": 0.964,
+      "turnover": 1.490565,
+      "feePaid": 0.002236,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "ii": {
+      "cagr": 3.209,
+      "mdd": 14.728,
+      "vol": 6.182,
+      "total": 66.936,
+      "winRate": 52.691,
+      "sharpe": 0.1559,
+      "excessVsHS300": 2.357,
+      "excessVsCash": 0.964,
+      "turnover": 1.490565,
+      "feePaid": 0.002236,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iii": {
+      "cagr": 3.209,
+      "mdd": 14.728,
+      "vol": 6.182,
+      "total": 66.936,
+      "winRate": 52.691,
+      "sharpe": 0.1559,
+      "excessVsHS300": 2.357,
+      "excessVsCash": 0.964,
+      "turnover": 1.490565,
+      "feePaid": 0.002236,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iv": {
+      "cagr": 2.781,
+      "mdd": 7.282,
+      "vol": 3.095,
+      "total": 56.066,
+      "winRate": 53.767,
+      "sharpe": 0.1732,
+      "excessVsHS300": 1.929,
+      "excessVsCash": 0.536,
+      "turnover": 0.877812,
+      "feePaid": 0.001317,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "diff_ii_i_cagrPP": 0,
+     "diff_iv_i_cagrPP": -0.428,
+     "diff_ii_iv_cagrPP": 0.428
+    },
+    {
+     "R": 20,
+     "eq": 40,
+     "i": {
+      "cagr": 3.433,
+      "mdd": 19.691,
+      "vol": 8.242,
+      "total": 72.913,
+      "winRate": 52.373,
+      "sharpe": 0.1441,
+      "excessVsHS300": 2.581,
+      "excessVsCash": 1.188,
+      "turnover": 1.747253,
+      "feePaid": 0.002621,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "ii": {
+      "cagr": 3.433,
+      "mdd": 19.691,
+      "vol": 8.242,
+      "total": 72.913,
+      "winRate": 52.373,
+      "sharpe": 0.1441,
+      "excessVsHS300": 2.581,
+      "excessVsCash": 1.188,
+      "turnover": 1.747253,
+      "feePaid": 0.002621,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iii": {
+      "cagr": 3.433,
+      "mdd": 19.691,
+      "vol": 8.242,
+      "total": 72.913,
+      "winRate": 52.373,
+      "sharpe": 0.1441,
+      "excessVsHS300": 2.581,
+      "excessVsCash": 1.188,
+      "turnover": 1.747253,
+      "feePaid": 0.002621,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iv": {
+      "cagr": 2.936,
+      "mdd": 9.746,
+      "vol": 4.124,
+      "total": 59.919,
+      "winRate": 53.302,
+      "sharpe": 0.1676,
+      "excessVsHS300": 2.084,
+      "excessVsCash": 0.691,
+      "turnover": 1.111811,
+      "feePaid": 0.001668,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "diff_ii_i_cagrPP": 0,
+     "diff_iv_i_cagrPP": -0.497,
+     "diff_ii_iv_cagrPP": 0.497
+    },
+    {
+     "R": 25,
+     "eq": 50,
+     "i": {
+      "cagr": 3.607,
+      "mdd": 24.469,
+      "vol": 10.306,
+      "total": 77.72,
+      "winRate": 52.177,
+      "sharpe": 0.1322,
+      "excessVsHS300": 2.755,
+      "excessVsCash": 1.362,
+      "turnover": 1.880212,
+      "feePaid": 0.00282,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "ii": {
+      "cagr": 3.607,
+      "mdd": 24.469,
+      "vol": 10.306,
+      "total": 77.72,
+      "winRate": 52.177,
+      "sharpe": 0.1322,
+      "excessVsHS300": 2.755,
+      "excessVsCash": 1.362,
+      "turnover": 1.880212,
+      "feePaid": 0.00282,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iii": {
+      "cagr": 3.607,
+      "mdd": 24.469,
+      "vol": 10.306,
+      "total": 77.72,
+      "winRate": 52.177,
+      "sharpe": 0.1322,
+      "excessVsHS300": 2.755,
+      "excessVsCash": 1.362,
+      "turnover": 1.880212,
+      "feePaid": 0.00282,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iv": {
+      "cagr": 3.078,
+      "mdd": 12.173,
+      "vol": 5.153,
+      "total": 63.549,
+      "winRate": 53.082,
+      "sharpe": 0.1617,
+      "excessVsHS300": 2.226,
+      "excessVsCash": 0.833,
+      "turnover": 1.316044,
+      "feePaid": 0.001974,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "diff_ii_i_cagrPP": 0,
+     "diff_iv_i_cagrPP": -0.529,
+     "diff_ii_iv_cagrPP": 0.529
+    },
+    {
+     "R": 30,
+     "eq": 55,
+     "i": {
+      "cagr": 3.676,
+      "mdd": 26.792,
+      "vol": 11.341,
+      "total": 79.649,
+      "winRate": 52.153,
+      "sharpe": 0.1262,
+      "excessVsHS300": 2.824,
+      "excessVsCash": 1.431,
+      "turnover": 1.902467,
+      "feePaid": 0.002854,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "ii": {
+      "cagr": 3.676,
+      "mdd": 26.792,
+      "vol": 11.341,
+      "total": 79.649,
+      "winRate": 52.153,
+      "sharpe": 0.1262,
+      "excessVsHS300": 2.824,
+      "excessVsCash": 1.431,
+      "turnover": 1.902467,
+      "feePaid": 0.002854,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iii": {
+      "cagr": 3.676,
+      "mdd": 26.792,
+      "vol": 11.341,
+      "total": 79.649,
+      "winRate": 52.153,
+      "sharpe": 0.1262,
+      "excessVsHS300": 2.824,
+      "excessVsCash": 1.431,
+      "turnover": 1.902467,
+      "feePaid": 0.002854,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "iv": {
+      "cagr": 3.145,
+      "mdd": 13.457,
+      "vol": 5.668,
+      "total": 65.274,
+      "winRate": 52.838,
+      "sharpe": 0.1588,
+      "excessVsHS300": 2.293,
+      "excessVsCash": 0.9,
+      "turnover": 1.407133,
+      "feePaid": 0.002111,
+      "cutCount": 0,
+      "recoverCount": 0,
+      "rebalCount": 64,
+      "triggers": 0
+     },
+     "diff_ii_i_cagrPP": 0,
+     "diff_iv_i_cagrPP": -0.531,
+     "diff_ii_iv_cagrPP": 0.531
+    }
+   ],
+   "sampleSplit": {
+    "walkForward": {
+     "folds": [
+      {
+       "fold": 1,
+       "train": "2010-01-04~2015-03-18",
+       "test": "2015-03-19~2017-10-16",
+       "testIdx": [
+        1260,
+        1889
+       ],
+       "testDays": 630,
+       "hasTriggerInfo": true,
+       "i_cagr": 4.264,
+       "i_mdd": 19.724,
+       "i_dd20": {
+        "n": 0,
+        "peakPct": 19.724
+       },
+       "iv_cagr": 3.47,
+       "iv_mdd": 9.774
+      },
+      {
+       "fold": 2,
+       "train": "2012-08-08~2017-10-16",
+       "test": "2017-10-17~2020-05-19",
+       "testIdx": [
+        1890,
+        2519
+       ],
+       "testDays": 630,
+       "hasTriggerInfo": false,
+       "i_cagr": 2.178,
+       "i_mdd": 11.703,
+       "i_dd20": {
+        "n": 0,
+        "peakPct": 11.703
+       },
+       "iv_cagr": 2.298,
+       "iv_mdd": 5.19
+      },
+      {
+       "fold": 3,
+       "train": "2015-03-19~2020-05-19",
+       "test": "2020-05-20~2022-12-19",
+       "testIdx": [
+        2520,
+        3149
+       ],
+       "testDays": 630,
+       "hasTriggerInfo": false,
+       "i_cagr": 3.208,
+       "i_mdd": 10.897,
+       "i_dd20": {
+        "n": 0,
+        "peakPct": 10.897
+       },
+       "iv_cagr": 2.639,
+       "iv_mdd": 4.214
+      },
+      {
+       "fold": 4,
+       "train": "2017-10-17~2022-12-19",
+       "test": "2022-12-20~2025-07-28",
+       "testIdx": [
+        3150,
+        3779
+       ],
+       "testDays": 630,
+       "hasTriggerInfo": false,
+       "i_cagr": 3.635,
+       "i_mdd": 6.97,
+       "i_dd20": {
+        "n": 0,
+        "peakPct": 6.97
+       },
+       "iv_cagr": 2.488,
+       "iv_mdd": 3.07
+      }
+     ],
+     "honestNote": "按 bt_extended.js 1260/630/步长630 滚动切分（非等分）；折间训练段互相重叠、非独立；4 折中仅第 1 折测试段含任何名义档触发信息，其余 3 折对低频尾部规则零信息；V 采用「折首重置」口径（与 v1.4/v1.5 一致，与「V 跨折延续」不可兼得，已如实声明）。**4 折不是 4 个独立验证，不得称「样本外验证」，仅作「结论是否由单一段主导」的诊断**（量化 §2.3(b)/§3.7）"
+    },
+    "startSensitivity": {
+     "note": "起点 2010/2013/2016/2019，V 折首重置；分层报告、不平均",
+     "rows": [
+      {
+       "start": "2010-01-04",
+       "startIdx": 0,
+       "days": 4089,
+       "i_cagr": 3.433,
+       "i_mdd": 19.691,
+       "iv_cagr": 2.936,
+       "iv_mdd": 9.746
+      },
+      {
+       "start": "2013-01-04",
+       "startIdx": 729,
+       "days": 3360,
+       "i_cagr": 4.457,
+       "i_mdd": 20.484,
+       "iv_cagr": 3.347,
+       "iv_mdd": 10.091
+      },
+      {
+       "start": "2016-01-04",
+       "startIdx": 1456,
+       "days": 2633,
+       "i_cagr": 3.11,
+       "i_mdd": 11.63,
+       "iv_cagr": 2.526,
+       "iv_mdd": 5.164
+      },
+      {
+       "start": "2019-01-04",
+       "startIdx": 2189,
+       "days": 1900,
+       "i_cagr": 4.199,
+       "i_mdd": 10.974,
+       "iv_cagr": 3.01,
+       "iv_mdd": 4.405
+      }
+     ]
+    },
+    "rollingWindow": {
+     "windowDays": 252,
+     "stepDays": 63,
+     "windows": 61,
+     "mddMin": 2.357,
+     "mddMedian": 6.332,
+     "mddMax": 19.724,
+     "windowsWithDdGe20": 0,
+     "note": "固定 E=40% 常数混合的滚动窗口 MDD 分布（本地单一数据源、逐位可复现）；属稳健性描述，非状态机绩效，不作显著性推断"
+    }
+   }
+  },
+  "C": {
+   "title": "C. 口径敏感性诊断层（与 B 表物理分离）",
+   "separation": "C 表回答「换一个同样合理的口径，结论会不会翻转」；差异是系统性规则差异，不是抽样误差/置信区间，不能写成「MDD 19.63%~20.93%」或「±0.65pp」；C 表数字不得混入 B 表绩效列",
+   "sixDimLabels": [
+    "权重",
+    "现金利率",
+    "成本",
+    "成交",
+    "再平衡频率",
+    "股息处理"
+   ],
+   "realHistoryGrid": {
+    "design": "6 维口径变体 2(权重)×5(现金)×4(成本/成交)×2(再平衡)×2(股息)=160 变体 × 4 档 R = 640 单元（联动 B.R2EQ）；逐格写全 6 维标签",
+    "sixDimLabels": [
+     "权重",
+     "现金利率",
+     "成本",
+     "成交",
+     "再平衡频率",
+     "股息处理"
+    ],
+    "totalCells": 160,
+    "v0Assertion": {
+     "mixVar_vs_mixRef_maxAbsDiff": 0,
+     "pass": true,
+     "note": "mixVar 与 mixRef 主口径逐位对齐，C 表数字与 B 表同源、可复现"
+    },
+    "byDimension": {
+     "权重": [
+      {
+       "value": "75/25",
+       "cellCount": 80,
+       "R20_mddMin": 18.288,
+       "R20_mddMedian": 19.987,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 2.339,
+       "triggeredCells_anyR": 39,
+       "hitRows_anyR": 102,
+       "thinRows_anyR": 170
+      },
+      {
+       "value": "70/30",
+       "cellCount": 80,
+       "R20_mddMin": 18.232,
+       "R20_mddMedian": 19.967,
+       "R20_mddMax": 20.618,
+       "R20_mddRange": 2.386,
+       "triggeredCells_anyR": 39,
+       "hitRows_anyR": 93,
+       "thinRows_anyR": 169
+      }
+     ],
+     "现金利率": [
+      {
+       "value": "分段 3.0/2.3/1.3%",
+       "cellCount": 32,
+       "R20_mddMin": 18.553,
+       "R20_mddMedian": 19.948,
+       "R20_mddMax": 20.333,
+       "R20_mddRange": 1.78,
+       "triggeredCells_anyR": 12,
+       "hitRows_anyR": 32,
+       "thinRows_anyR": 69
+      },
+      {
+       "value": "常数 2.5%",
+       "cellCount": 32,
+       "R20_mddMin": 18.489,
+       "R20_mddMedian": 19.889,
+       "R20_mddMax": 20.274,
+       "R20_mddRange": 1.785,
+       "triggeredCells_anyR": 12,
+       "hitRows_anyR": 28,
+       "thinRows_anyR": 68
+      },
+      {
+       "value": "分段 +1pp",
+       "cellCount": 32,
+       "R20_mddMin": 18.232,
+       "R20_mddMedian": 19.652,
+       "R20_mddMax": 20.038,
+       "R20_mddRange": 1.806,
+       "triggeredCells_anyR": 6,
+       "hitRows_anyR": 9,
+       "thinRows_anyR": 58
+      },
+      {
+       "value": "分段 -1pp",
+       "cellCount": 32,
+       "R20_mddMin": 18.872,
+       "R20_mddMedian": 20.244,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 1.755,
+       "triggeredCells_anyR": 24,
+       "hitRows_anyR": 63,
+       "thinRows_anyR": 72
+      },
+      {
+       "value": "全期 1.3% 前瞻",
+       "cellCount": 32,
+       "R20_mddMin": 18.872,
+       "R20_mddMedian": 20.244,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 1.755,
+       "triggeredCells_anyR": 24,
+       "hitRows_anyR": 63,
+       "thinRows_anyR": 72
+      }
+     ],
+     "成本": [
+      {
+       "value": "无成本",
+       "cellCount": 40,
+       "R20_mddMin": 18.232,
+       "R20_mddMedian": 19.531,
+       "R20_mddMax": 20.53,
+       "R20_mddRange": 2.298,
+       "triggeredCells_anyR": 12,
+       "hitRows_anyR": 32,
+       "thinRows_anyR": 58
+      },
+      {
+       "value": "费5bp+滑点10bp",
+       "cellCount": 80,
+       "R20_mddMin": 18.26,
+       "R20_mddMedian": 19.981,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 2.367,
+       "triggeredCells_anyR": 40,
+       "hitRows_anyR": 98,
+       "thinRows_anyR": 170
+      },
+      {
+       "value": "费+滑点+T+1+10%股息税",
+       "cellCount": 40,
+       "R20_mddMin": 19.389,
+       "R20_mddMedian": 20.045,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 1.238,
+       "triggeredCells_anyR": 26,
+       "hitRows_anyR": 65,
+       "thinRows_anyR": 111
+      }
+     ],
+     "成交": [
+      {
+       "value": "T+0",
+       "cellCount": 80,
+       "R20_mddMin": 18.232,
+       "R20_mddMedian": 19.531,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 2.395,
+       "triggeredCells_anyR": 26,
+       "hitRows_anyR": 69,
+       "thinRows_anyR": 118
+      },
+      {
+       "value": "T+1",
+       "cellCount": 80,
+       "R20_mddMin": 19.348,
+       "R20_mddMedian": 20.038,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 1.279,
+       "triggeredCells_anyR": 52,
+       "hitRows_anyR": 126,
+       "thinRows_anyR": 221
+      }
+     ],
+     "再平衡频率": [
+      {
+       "value": "q63",
+       "cellCount": 80,
+       "R20_mddMin": 18.232,
+       "R20_mddMedian": 19.348,
+       "R20_mddMax": 20.396,
+       "R20_mddRange": 2.164,
+       "triggeredCells_anyR": 24,
+       "hitRows_anyR": 50,
+       "thinRows_anyR": 101
+      },
+      {
+       "value": "每日1日",
+       "cellCount": 80,
+       "R20_mddMin": 19.531,
+       "R20_mddMedian": 20.222,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 1.096,
+       "triggeredCells_anyR": 54,
+       "hitRows_anyR": 145,
+       "thinRows_anyR": 238
+      }
+     ],
+     "股息处理": [
+      {
+       "value": "carry 计入",
+       "cellCount": 80,
+       "R20_mddMin": 18.232,
+       "R20_mddMedian": 19.769,
+       "R20_mddMax": 20.282,
+       "R20_mddRange": 2.05,
+       "triggeredCells_anyR": 24,
+       "hitRows_anyR": 54,
+       "thinRows_anyR": 159
+      },
+      {
+       "value": "carry 归零(下界压力)",
+       "cellCount": 80,
+       "R20_mddMin": 18.633,
+       "R20_mddMedian": 20.166,
+       "R20_mddMax": 20.627,
+       "R20_mddRange": 1.994,
+       "triggeredCells_anyR": 54,
+       "hitRows_anyR": 141,
+       "thinRows_anyR": 180
+      }
+     ]
+    },
+    "singleVariable": {
+     "note": "以主口径 C 为基准每次只动 1 维（R=20%/E=40%）；基准 MDD=19.691%",
+     "rows": [
+      {
+       "name": "基准：主口径",
+       "mddPct": 19.691,
+       "headroomPP": 0.309,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "w 75/25→70/30",
+       "mddPct": 19.665,
+       "headroomPP": 0.335,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "现金 分段→常数2.5%",
+       "mddPct": 19.628,
+       "headroomPP": 0.372,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "现金 分段→分段+1pp",
+       "mddPct": 19.374,
+       "headroomPP": 0.626,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "现金 分段→分段-1pp",
+       "mddPct": 20.006,
+       "headroomPP": -0.006,
+       "hitDays": 1,
+       "firstHitDate": "2016-01-28"
+      },
+      {
+       "name": "现金 分段→全期1.3%前瞻",
+       "mddPct": 20.006,
+       "headroomPP": -0.006,
+       "hitDays": 1,
+       "firstHitDate": "2016-01-28"
+      },
+      {
+       "name": "成本→无成本/T+0",
+       "mddPct": 18.609,
+       "headroomPP": 1.391,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "成本→费+滑点/T+0(仅去T+1)",
+       "mddPct": 18.636,
+       "headroomPP": 1.364,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "成本→+10%股息税",
+       "mddPct": 19.73,
+       "headroomPP": 0.27,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "再平衡 季度63→每日1日",
+       "mddPct": 19.948,
+       "headroomPP": 0.052,
+       "hitDays": 0,
+       "firstHitDate": null
+      },
+      {
+       "name": "股息 计入→carry归零",
+       "mddPct": 20.082,
+       "headroomPP": -0.082,
+       "hitDays": 1,
+       "firstHitDate": "2016-01-28"
+      }
+     ]
+    },
+    "calQParallel": {
+     "label": "q63（默认）vs calQ（敏感性）—— 同一主口径 6 维，仅日历维不同",
+     "q63": {
+      "resetPoints": 64,
+      "mddPct": 19.691,
+      "hitR20": 0,
+      "firstHitR20": null
+     },
+     "calQ": {
+      "resetPoints": 67,
+      "mddPct": 20.924,
+      "hitR20": 7,
+      "firstHitR20": "2016-01-26"
+     },
+     "note": "两者是「同一策略族下两个不同确定性实现规则」的点估计，MDD 是路径泛函、不存在抽样分布；禁止写成「MDD 19.63%~20.93%」「20.28% ±0.65pp」「平均约 20.3%」「两套口径结论一致/差异可忽略」。",
+     "accountLayerSimplified": "「20.928%」属账户层简化口径（现金不计息/无成本/不含股息），与主口径 19.691% 不可相减或并列成区间；本表两行均为统一 6 维主口径，仅日历维不同。",
+     "bothDisclosed": true,
+     "notOptionalParamTable": true
+    },
+    "dividendTrichotomy": [
+     {
+      "id": "① carry 计入（主口径）",
+      "status": "唯一可作 V0 对照 / 状态机绩效比较的基准",
+      "mddR20": 19.691
+     },
+     {
+      "id": "② carry 归零（下界压力口径）",
+      "status": "不作 V0、不进绩效比较、不用于存废、不写触发条件；只出现在敏感性网格与数据局限披露",
+      "mddR20": 20.082,
+      "note": "与价格指数不含股息叠加会双重遗漏权益回报，仅作敏感性下界；基准口径错误、仅作下界压力口径"
+     },
+     {
+      "id": "③ 季节性 DPS 路径（第三口径）",
+      "status": "数据不足、本轮未检验",
+      "note": "逐日除息日历「数据待更新」；统一基线下无法构造，不估算、严禁用外部核对数据混拼补齐"
+     }
+    ],
+    "separationStatement": "C 表是诊断工具，说明「按构造不触发」对口径假设的脆弱性，不说明减半条款的收益/回撤改善幅度；C 表数字不得混入 B 表绩效列；C 表差异是系统性规则差异，不是抽样误差、不是置信区间。",
+    "coreVariantNote": "保留 Phase 2 的「核心合理变体」划分（季度 63 日的 80 个），不在 Phase 5 事后重划或扩编；每日 1 日再平衡仅作极值边界参照。"
+   },
+   "signConsistency": {
+    "scope": "预注册主检验（q63+R=0.20/eqBase=0.40+review20+真实历史+费5bp+滑点10bp+T+1）之外，全部只做符号一致性计数；不做 p 值/CI/功效、不对状态机做 block bootstrap 显著性推断",
+    "signDefinition": "sign=1 表示 (ii)-(i) 使 MDD 改善(减半有效方向)；-1 表示恶化；0 表示触发 0 次导致 (ii)≡(i) 恒等/不可评估。净效应判据以 MDD 为主；CAGR 差仅并列记录",
+    "matrix": {
+     "dims": "成本4 × reviewLag3 × 日历2 × 4档R = 96 单元（真实历史）；另有锚点 8 方向 + 压力路径单列",
+     "cells": 96,
+     "count": {
+      "total": 96,
+      "positive": 0,
+      "negative": 18,
+      "zero": 78,
+      "triggeredCells": 18,
+      "zeroTriggerCells": 78,
+      "ratio": 0
+     },
+     "byCal": {
+      "q63": {
+       "total": 48,
+       "positive": 0,
+       "negative": 0,
+       "zero": 48,
+       "triggeredCells": 0,
+       "zeroTriggerCells": 48,
+       "ratio": null
+      },
+      "calQ": {
+       "total": 48,
+       "positive": 0,
+       "negative": 18,
+       "zero": 30,
+       "triggeredCells": 18,
+       "zeroTriggerCells": 30,
+       "ratio": 0
+      }
+     }
+    },
+    "anchors": {
+     "note": "8 锚点口径方向（真实历史 R=20%/E=40%），逐方向报触发次数与符号，不平均",
+     "rows": [
+      {
+       "dir": "主口径",
+       "triggers": 0,
+       "dMddPP": 0,
+       "sign": 0
+      },
+      {
+       "dir": "现金-1pp",
+       "triggers": 1,
+       "dMddPP": 0,
+       "sign": 0
+      },
+      {
+       "dir": "全期1.3%前瞻",
+       "triggers": 1,
+       "dMddPP": 0,
+       "sign": 0
+      },
+      {
+       "dir": "carry归零(下界压力)",
+       "triggers": 1,
+       "dMddPP": 0,
+       "sign": 0
+      },
+      {
+       "dir": "权重70/30",
+       "triggers": 0,
+       "dMddPP": 0,
+       "sign": 0
+      },
+      {
+       "dir": "现金+1pp",
+       "triggers": 0,
+       "dMddPP": 0,
+       "sign": 0
+      },
+      {
+       "dir": "无成本T+0",
+       "triggers": 0,
+       "dMddPP": 0,
+       "sign": 0
+      },
+      {
+       "dir": "去T+1",
+       "triggers": 0,
+       "dMddPP": 0,
+       "sign": 0
+      }
+     ],
+     "count": {
+      "total": 8,
+      "positive": 0,
+      "negative": 0,
+      "zero": 8,
+      "triggeredCells": 3,
+      "zeroTriggerCells": 5,
+      "ratio": 0
+     }
+    },
+    "verdict": "主口径及绝大多数合理口径触发 0 次 ⇒ (ii)≡(i)、净效应符号 0、不可评估；calQ / 现金-1pp / 全期1.3% / carry归零 等边界口径各有 1 次触发，但独立事件 <3、cutOnce 下处理事件 ≤1，方差不存在，符号计数不构成「有效/无效/显著」认定。禁止 p 值 / 置信区间 / 功效数值。",
+    "noiseRule": "|净效应| < 2×总成本 判「噪声主导、符号不可判定」；独立触发事件 <3 判「数据不足」"
+   },
+   "stressPaths": {
+    "status": "仅作「构造压力检验 / 机制检验」；全部为情景假设、非历史事实、非预测；不得用于选参数、不得写进主结论、不得称样本外验证",
+    "disclaimer": "【情景假设参数，非历史事实、非已公布数据、非对未来涨跌的预测，也不代表情景发生概率】下表中利率路径参数、权益累计跌幅参数、现金到账利率参数均为本轮为压力测试主观设定的构造量。「构造锚」列引用本地价格序列的真实历史回撤幅度，仅作为量级参照，不构成对情景参数的历史验证。",
+    "construction": "Cholesky 2×2 分解（相关矩阵 [[1,ρ],[ρ,1]]，L21=ρ、L22=√(1-ρ²)）+ 固定种子 LCG（SEED_BASE=20261108，逐 路径/pick/R 确定性派生）+ 前重后轻几何衰减(A)/匀速(B)/窄幅(C) 形状权重 + 累计对数收益精确达标 + 每日去均值噪声（保证相关与无反弹）",
+    "dpsSeparation": {
+     "rule": "divCash = u·DPS（份额×每股股息），禁止 v^syn·dy^hist；DPS_0 = dy_0 × P_0（dy_0 用本地 34 点插值全期均值，单一数据源内）；κ 网格滞后 3 季度、按年复利",
+     "dyH0Pct": 2.309,
+     "dyD0Pct": 4.036,
+     "d1": {
+      "note": "A 路径下「份额×固定DPS」与「市值×历史dy」累计 divCash 分离（前者不缩水、后者随市值缩水）；分离幅度与跌幅单调相关",
+      "rows": [
+       {
+        "pick": "lo",
+        "equityCumDropPct": -40,
+        "cumDivCash_dpsFixed": 0.006259,
+        "cumDivCash_mktValueDy": 0.004405,
+        "separationPct": 42.1,
+        "note": "dpsFixed(份额×固定DPS)不随价格缩水 > mktValueDy(市值×历史dy)随市值缩水"
+       },
+       {
+        "pick": "mid",
+        "equityCumDropPct": -45,
+        "cumDivCash_dpsFixed": 0.00831,
+        "cumDivCash_mktValueDy": 0.005486,
+        "separationPct": 51.49,
+        "note": "dpsFixed(份额×固定DPS)不随价格缩水 > mktValueDy(市值×历史dy)随市值缩水"
+       },
+       {
+        "pick": "hi",
+        "equityCumDropPct": -50,
+        "cumDivCash_dpsFixed": 0.010903,
+        "cumDivCash_mktValueDy": 0.006345,
+        "separationPct": 71.83,
+        "note": "dpsFixed(份额×固定DPS)不随价格缩水 > mktValueDy(市值×历史dy)随市值缩水"
+       }
+      ]
+     },
+     "kappa": {
+      "note": "κ 网格纯假设、无本轮数据标定；A（余量略增、触发更不易）与 B（含削减则余量略减）方向相反须分路径报告、不平均；C 不可预判单列口径不确定",
+      "rows": [
+       {
+        "id": "A",
+        "kappa": 0,
+        "triggerCount": 0,
+        "mdd": 18.426,
+        "cumDivCash": 0.00831
+       },
+       {
+        "id": "A",
+        "kappa": -0.05,
+        "triggerCount": 0,
+        "mdd": 18.426,
+        "cumDivCash": 0.00831
+       },
+       {
+        "id": "A",
+        "kappa": -0.1,
+        "triggerCount": 0,
+        "mdd": 18.426,
+        "cumDivCash": 0.00831
+       },
+       {
+        "id": "B",
+        "kappa": 0,
+        "triggerCount": 1,
+        "mdd": 29.139,
+        "cumDivCash": 0.038112
+       },
+       {
+        "id": "B",
+        "kappa": -0.03,
+        "triggerCount": 1,
+        "mdd": 29.217,
+        "cumDivCash": 0.037278
+       },
+       {
+        "id": "B",
+        "kappa": -0.08,
+        "triggerCount": 1,
+        "mdd": 29.345,
+        "cumDivCash": 0.0359
+       },
+       {
+        "id": "C",
+        "kappa": 0,
+        "triggerCount": 0,
+        "mdd": 5.365,
+        "cumDivCash": 0.023457
+       },
+       {
+        "id": "C",
+        "kappa": -0.03,
+        "triggerCount": 0,
+        "mdd": 5.393,
+        "cumDivCash": 0.023169
+       },
+       {
+        "id": "C",
+        "kappa": -0.08,
+        "triggerCount": 0,
+        "mdd": 5.44,
+        "cumDivCash": 0.022685
+       }
+      ]
+     },
+     "hardConstraint": "P1 建模约束：压力路径不得沿用 v^syn·dy^hist；已通过 runSynth 的 divMode 实现 DPS 与价格分离"
+    },
+    "cellDisclosure": {
+     "totalCells": 36,
+     "evaluatedCells": 35,
+     "invalidCells": [
+      {
+       "id": "B",
+       "pick": "hi",
+       "R": 30,
+       "eq": 55,
+       "equityCumDropPct": -105,
+       "reason": "名义累计跌幅 -105%（dropMult × R 线性外推）越过权益 -100% 物理下限，ln(1+drop) 无实数解，构造不成立"
+      }
+     ],
+     "rule": "名义累计跌幅 ≤ -100% 的人工构造组合判「不可评估」：绩效/触发/符号字段全部留空（null），不截断到 -95%、不外推、不伪造 MDD=0 的假象值；该单元不参与任何符号一致性计数或均值；合法单元照常只做机制/符号计数",
+     "topLevelFieldNote": "每组 stressResults[].equityCumDropPct 是 R=0.20 基准展示值；每个 byR 单元的实际累计跌幅见 byR[].equityCumDropPct（= -(dropMult × 该档 R × 100)），二者不可混用"
+    },
+    "results": [
+     {
+      "id": "A",
+      "name": "利率急上行 + 权益急跌",
+      "pick": "lo",
+      "lengthDays": 126,
+      "equityCumDropPct": -40,
+      "corr": 0.96,
+      "cashRateFromPct": 1.3,
+      "cashRateToPct": 2.5,
+      "seed": 20362138,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -30,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 8.634,
+        "i_mdd": 8.634,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -40,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 15.919,
+        "i_mdd": 15.919,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -50,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 0,
+        "ii_mdd": 25.359,
+        "i_mdd": 25.336,
+        "dMddPP": 0.023,
+        "firstTriggerIdx": 109
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -60,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 33.602,
+        "i_mdd": 34.32,
+        "dMddPP": -0.718,
+        "firstTriggerIdx": 85
+       }
+      ]
+     },
+     {
+      "id": "A",
+      "name": "利率急上行 + 权益急跌",
+      "pick": "mid",
+      "lengthDays": 158,
+      "equityCumDropPct": -45,
+      "corr": 0.975,
+      "cashRateFromPct": 1.3,
+      "cashRateToPct": 3,
+      "seed": 20362148,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -33.75,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 9.921,
+        "i_mdd": 9.921,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -45,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 18.426,
+        "i_mdd": 18.426,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -56.25,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 28.103,
+        "i_mdd": 29.721,
+        "dMddPP": -1.618,
+        "firstTriggerIdx": 93
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -67.5,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 38.159,
+        "i_mdd": 39.272,
+        "dMddPP": -1.113,
+        "firstTriggerIdx": 63
+       }
+      ]
+     },
+     {
+      "id": "A",
+      "name": "利率急上行 + 权益急跌",
+      "pick": "hi",
+      "lengthDays": 189,
+      "equityCumDropPct": -50,
+      "corr": 0.99,
+      "cashRateFromPct": 1.3,
+      "cashRateToPct": 3.5,
+      "seed": 20362158,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -37.5,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 11.417,
+        "i_mdd": 11.417,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -50,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 20.876,
+        "i_mdd": 21.01,
+        "dMddPP": -0.134,
+        "firstTriggerIdx": 117
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -62.5,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 32.165,
+        "i_mdd": 34.048,
+        "dMddPP": -1.883,
+        "firstTriggerIdx": 71
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -75,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 44.189,
+        "i_mdd": 45.354,
+        "dMddPP": -1.165,
+        "firstTriggerIdx": 57
+       }
+      ]
+     },
+     {
+      "id": "B",
+      "name": "长期低利率慢熊",
+      "pick": "lo",
+      "lengthDays": 504,
+      "equityCumDropPct": -60,
+      "corr": 0.71,
+      "cashRateFromPct": 1,
+      "cashRateToPct": 0.8,
+      "seed": 20463138,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -45,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 13.176,
+        "i_mdd": 13.176,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -60,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 26.427,
+        "i_mdd": 26.747,
+        "dMddPP": -0.32,
+        "firstTriggerIdx": 347
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -75,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 44.504,
+        "i_mdd": 45.093,
+        "dMddPP": -0.589,
+        "firstTriggerIdx": 235
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -90,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 64.917,
+        "i_mdd": 65.376,
+        "dMddPP": -0.459,
+        "firstTriggerIdx": 152
+       }
+      ]
+     },
+     {
+      "id": "B",
+      "name": "长期低利率慢熊",
+      "pick": "mid",
+      "lengthDays": 630,
+      "equityCumDropPct": -65,
+      "corr": 0.725,
+      "cashRateFromPct": 1.15,
+      "cashRateToPct": 0.9,
+      "seed": 20463148,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -48.75,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 14.46,
+        "i_mdd": 14.46,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -65,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 29.139,
+        "i_mdd": 29.393,
+        "dMddPP": -0.254,
+        "firstTriggerIdx": 363
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -81.25,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 49.929,
+        "i_mdd": 50.56,
+        "dMddPP": -0.631,
+        "firstTriggerIdx": 244
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -97.5,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 76.512,
+        "i_mdd": 77.098,
+        "dMddPP": -0.586,
+        "firstTriggerIdx": 128
+       }
+      ]
+     },
+     {
+      "id": "B",
+      "name": "长期低利率慢熊",
+      "pick": "hi",
+      "lengthDays": 756,
+      "equityCumDropPct": -70,
+      "corr": 0.74,
+      "cashRateFromPct": 1.3,
+      "cashRateToPct": 1,
+      "seed": 20463158,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -52.5,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 0,
+        "ii_mdd": 15.069,
+        "i_mdd": 15.051,
+        "dMddPP": 0.018,
+        "firstTriggerIdx": 752
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -70,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 32.023,
+        "i_mdd": 32.306,
+        "dMddPP": -0.283,
+        "firstTriggerIdx": 436
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -87.5,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 1,
+        "cutCount": 1,
+        "recoverCount": 1,
+        "ii_mdd": 56.919,
+        "i_mdd": 57.354,
+        "dMddPP": -0.435,
+        "firstTriggerIdx": 259
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -105,
+        "status": "不可评估（人工构造情景物理越界）",
+        "invalidReason": "名义累计跌幅 -105%（dropMult × R 线性外推）越过权益 -100% 物理下限，ln(1+drop) 无实数解，构造不成立",
+        "triggerCount": null,
+        "cutCount": null,
+        "recoverCount": null,
+        "ii_mdd": null,
+        "i_mdd": null,
+        "dMddPP": null,
+        "firstTriggerIdx": null
+       }
+      ]
+     },
+     {
+      "id": "C",
+      "name": "通缩式阴跌 / 低波动钝化",
+      "pick": "lo",
+      "lengthDays": 504,
+      "equityCumDropPct": -16,
+      "corr": 0.85,
+      "cashRateFromPct": 1,
+      "cashRateToPct": 1,
+      "seed": 20564138,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -12,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 1.925,
+        "i_mdd": 1.925,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -16,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 4.133,
+        "i_mdd": 4.133,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -20,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 7.217,
+        "i_mdd": 7.217,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -24,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 10.659,
+        "i_mdd": 10.659,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       }
+      ]
+     },
+     {
+      "id": "C",
+      "name": "通缩式阴跌 / 低波动钝化",
+      "pick": "mid",
+      "lengthDays": 504,
+      "equityCumDropPct": -20,
+      "corr": 0.875,
+      "cashRateFromPct": 1.15,
+      "cashRateToPct": 1.15,
+      "seed": 20564148,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -15,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 1.844,
+        "i_mdd": 1.844,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -20,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 5.365,
+        "i_mdd": 5.365,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -25,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 10.173,
+        "i_mdd": 10.173,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -30,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 14.593,
+        "i_mdd": 14.593,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       }
+      ]
+     },
+     {
+      "id": "C",
+      "name": "通缩式阴跌 / 低波动钝化",
+      "pick": "hi",
+      "lengthDays": 504,
+      "equityCumDropPct": -24,
+      "corr": 0.9,
+      "cashRateFromPct": 1.3,
+      "cashRateToPct": 1.3,
+      "seed": 20564158,
+      "byR": [
+       {
+        "R": 15,
+        "eq": 30,
+        "equityCumDropPct": -18,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 2.855,
+        "i_mdd": 2.855,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 20,
+        "eq": 40,
+        "equityCumDropPct": -24,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 7.525,
+        "i_mdd": 7.525,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 25,
+        "eq": 50,
+        "equityCumDropPct": -30,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 12.612,
+        "i_mdd": 12.612,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       },
+       {
+        "R": 30,
+        "eq": 55,
+        "equityCumDropPct": -36,
+        "status": "已评估（人工构造、非历史事实、非预测；仅机制/符号计数）",
+        "triggerCount": 0,
+        "cutCount": 0,
+        "recoverCount": 0,
+        "ii_mdd": 17.921,
+        "i_mdd": 17.921,
+        "dMddPP": 0,
+        "firstTriggerIdx": null
+       }
+      ]
+     }
+    ],
+    "fourRFullCheck": true,
+    "d10ExplicitPick": "lo/mid/hi 全部显式跑出，未用默认 mid 代替决策",
+    "limits": [
+     "幅度 / 相关性 / 利率路径 / 现金到账利率全部是主观情景假设参数，非历史事实、非预测",
+     "合成序列由 Cholesky + 固定种子生成，是模型输出而非真实数据，单独标注「人工构造、非历史事实」，严禁与真实价格序列混拼命名",
+     "A/B 明确「无反弹」，结构性偏向「减半保护」方向，对「反弹踏空 / 20 日锁定机会成本」不公平",
+     "构造锚来自同一份历史序列，与真实样本不独立，不是真正的样本外",
+     "结论只对假设成立，不得用来选参数、不得宣称显著性、不得写进主结论",
+     "36 个合成单元中 1 个（B/hi × R=30%，dropMult 3.5 × 0.30 → 名义累计跌幅 -105%）越过权益 -100% 物理下限，判「不可评估」并留空；其 MDD 字段为 null，不得读作 0 或「无改善」"
+    ]
+   },
+   "etfCostSensitivity": {
+    "status": "成本敏感性、非基线口径；主口径触发 0 次 ⇒ 减半卖出/恢复买回成交事件 = 0 ⇒ premiumShock / shortHoldRedemptionFee / settleLagDays / effectiveRecoverLag 在真实历史主口径下无作用对象，判「数据不足、不可评估」，只给档位不给点估计",
+    "authoritySource": "round4_phase3_etf_interface.md §三（主理人 §3.7 裁决为唯一权威口径）",
+    "registry": [
+     {
+      "id": "slippage",
+      "status": "仅登记，未实现",
+      "source": "round4_phase3_etf_interface.md §三",
+      "note": "情景假设、非历史事实、不得写进 B.P_MAIN_OPT；跑完须并列标注「成本敏感性、非基线口径」；单边 10/20/30 bp；压力日乘数 ×1/×2/×3 仅放大减半卖出日与恢复买回日，不放大季度再平衡",
+      "params": {
+       "slippageBp": [
+        10,
+        20,
+        30
+       ],
+       "stressDayMultiplier": [
+        1,
+        2,
+        3
+       ]
+      }
+     },
+     {
+      "id": "premiumShock",
+      "status": "仅登记，未实现",
+      "source": "round4_phase3_etf_interface.md §三",
+      "note": "情景假设、非历史事实、不得写进 B.P_MAIN_OPT；跑完须并列标注「成本敏感性、非基线口径」；成交价 = 次日收盘价 ×(1 + premiumShock)；卖出腿/买回腿独立取符号做 4 象限",
+      "params": {
+       "premiumShockBp": [
+        -30,
+        -10,
+        0,
+        10,
+        30
+       ]
+      }
+     },
+     {
+      "id": "settleLagDays",
+      "status": "仅登记，未实现",
+      "source": "round4_phase3_etf_interface.md §三",
+      "note": "情景假设、非历史事实、不得写进 B.P_MAIN_OPT；跑完须并列标注「成本敏感性、非基线口径」；0 = 场内；在途计息/不计息两档；在途资金不计入可再平衡现金",
+      "params": {
+       "settleLagDays": [
+        0,
+        3,
+        4,
+        7
+       ],
+       "inTransitInterest": [
+        "accrue",
+        "none"
+       ]
+      }
+     },
+     {
+      "id": "effectiveRecoverLag",
+      "status": "仅登记，未实现",
+      "source": "round4_phase3_etf_interface.md §三",
+      "note": "情景假设、非历史事实、不得写进 B.P_MAIN_OPT；跑完须并列标注「成本敏感性、非基线口径」；申购确认 T+1；替换/扩展现有 reviewLagDays 语义，须显式披露",
+      "params": {
+       "formula": "reviewLagDays + settleLagDays + 1"
+      }
+     },
+     {
+      "id": "shortHoldRedemptionFee",
+      "status": "仅登记，未实现",
+      "source": "round4_phase3_etf_interface.md §三",
+      "note": "情景假设、非历史事实、不得写进 B.P_MAIN_OPT；跑完须并列标注「成本敏感性、非基线口径」；二元开关（场外、持有 < 7 日的 1.5% 惩罚性赎回费）",
+      "params": {
+       "shortHoldRedemptionFeeBp": [
+        0,
+        150
+       ]
+      }
+     },
+     {
+      "id": "feeAnnual",
+      "status": "仅登记，未实现",
+      "source": "round4_phase3_etf_interface.md §三",
+      "note": "情景假设、非历史事实、不得写进 B.P_MAIN_OPT；跑完须并列标注「成本敏感性、非基线口径」；FEE_ANN 核对档（0.20% / 0.30% / 0.50% / 1.0%），不改基线",
+      "params": {
+       "feeAnnual": [
+        0.002,
+        0.003,
+        0.005,
+        0.01
+       ]
+      }
+     }
+    ],
+    "implementedIn": "phase5_sensitivity.js（本脚本）：slippage / premiumShock（成交价）/ settleLagDays（到账语义）/ feeAnnual 等扩展语义一律在此实现，不注入 runRClause、不改任何默认值（主理人放行条件）",
+    "parallelDisclosure": "基线口径 B.P_MAIN_OPT 与成本敏感性口径并列披露；禁止用敏感性净值替换基线净值、禁止与本地价格序列混拼",
+    "costSubjectSeparation": "slippage / premiumShock 属价格偏移（价差与折溢价），market impact 属占 ADV 比例，两者科目不同；禁止把前者叠加进「10 万元冲击成本可忽略」结论（后者只对占 ADV 比例这一科目成立）；报告分开列示以免下游误读为自相矛盾",
+    "wordingDiscipline": "行业侧 §3.2「10 万元冲击成本可忽略」改写为「基本成立，但须补两条限定」：① 2010~2019 无 000922 场内 ETF，工具可得性不成立（幸存者偏差、非摩擦）；② 冲击成本 ≠ 全部执行摩擦（折溢价/价差/资金在途/人工复核另计）；不得简写「执行成本可忽略」",
+    "forcedTriggerSignCount": {
+     "note": "仅在「calQ + R=20% 真实历史」强制触发场景（1 次 cut + 1 次 recover）验证 slippage 档位可运行性与符号一致性；feeAnnual 仅登记不注入（FEE_ANN 固定 0.005，不改默认值）",
+     "cells": 36,
+     "count": {
+      "total": 36,
+      "positive": 0,
+      "negative": 36,
+      "zero": 0,
+      "triggeredCells": 36,
+      "zeroTriggerCells": 0,
+      "ratio": 0
+     },
+     "sample": [
+      {
+       "slippageBp": 1,
+       "stressDayMultiplier": 1,
+       "feeAnnualRegisteredOnly": 0.002,
+       "triggers": 1,
+       "sign": -1,
+       "dMddPP": 0.919,
+       "label6": "[权重 75/25 | 现金 分段3.0/2.3/1.3% | 成本 slippage1bp×1(成本敏感性) | 成交 T+1 | 再平衡 calQ | 股息 carry计入]"
+      },
+      {
+       "slippageBp": 1,
+       "stressDayMultiplier": 1,
+       "feeAnnualRegisteredOnly": 0.003,
+       "triggers": 1,
+       "sign": -1,
+       "dMddPP": 0.919,
+       "label6": "[权重 75/25 | 现金 分段3.0/2.3/1.3% | 成本 slippage1bp×1(成本敏感性) | 成交 T+1 | 再平衡 calQ | 股息 carry计入]"
+      },
+      {
+       "slippageBp": 1,
+       "stressDayMultiplier": 1,
+       "feeAnnualRegisteredOnly": 0.005,
+       "triggers": 1,
+       "sign": -1,
+       "dMddPP": 0.919,
+       "label6": "[权重 75/25 | 现金 分段3.0/2.3/1.3% | 成本 slippage1bp×1(成本敏感性) | 成交 T+1 | 再平衡 calQ | 股息 carry计入]"
+      },
+      {
+       "slippageBp": 1,
+       "stressDayMultiplier": 1,
+       "feeAnnualRegisteredOnly": 0.01,
+       "triggers": 1,
+       "sign": -1,
+       "dMddPP": 0.919,
+       "label6": "[权重 75/25 | 现金 分段3.0/2.3/1.3% | 成本 slippage1bp×1(成本敏感性) | 成交 T+1 | 再平衡 calQ | 股息 carry计入]"
+      }
+     ]
+    },
+    "caliberNote": "stressDayMultiplier 仅放大减半卖出日与恢复买回日、不放大季度再平衡；本脚本主口径下这两类成交事件为 0，故乘数无实际作用对象，仅登记其口径"
+   },
+   "unmodeledFrictions": [
+    {
+     "seq": 1,
+     "name": "人工书面复核延迟",
+     "category": "摩擦",
+     "note": "reviewLagDays 是建模假设非实测",
+     "disclosure": "逐项定性披露，不汇总成成本数字、不给点估计；不进 B.P_MAIN_OPT、不进状态机绩效比较、不用于第 5 条存废裁决",
+     "c0Applicable": true,
+     "c1c2Applicable": "季度再平衡口径仍适用（恢复/复核相关项在净值层不适用）"
+    },
+    {
+     "seq": 2,
+     "name": "到账资金不可用窗口",
+     "category": "摩擦",
+     "note": "敞口约束/机会成本，非价格成本；在途资金不计入可再平衡现金",
+     "disclosure": "逐项定性披露，不汇总成成本数字、不给点估计；不进 B.P_MAIN_OPT、不进状态机绩效比较、不用于第 5 条存废裁决",
+     "c0Applicable": true,
+     "c1c2Applicable": "净值层不适用"
+    },
+    {
+     "seq": 3,
+     "name": "恢复日不确定 / 跨季 / 跨除息日耦合",
+     "category": "摩擦",
+     "note": "时点耦合，取决于日历而非价格",
+     "disclosure": "逐项定性披露，不汇总成成本数字、不给点估计；不进 B.P_MAIN_OPT、不进状态机绩效比较、不用于第 5 条存废裁决",
+     "c0Applicable": true,
+     "c1c2Applicable": "净值层不适用"
+    },
+    {
+     "seq": 4,
+     "name": "000922 ETF 历史缺席",
+     "category": "幸存者偏差，非摩擦",
+     "note": "★ 幸存者偏差、非摩擦，须显式标注；2010-2019 工具可得性不成立",
+     "disclosure": "逐项定性披露，不汇总成成本数字、不给点估计；不进 B.P_MAIN_OPT、不进状态机绩效比较、不用于第 5 条存废裁决",
+     "c0Applicable": true,
+     "c1c2Applicable": "季度再平衡口径仍适用（恢复/复核相关项在净值层不适用）"
+    },
+    {
+     "seq": 5,
+     "name": "折溢价方向性与 IOPV 失真",
+     "category": "摩擦",
+     "note": "状态依赖、买卖两腿方向相反，固定 bp 会系统性错估",
+     "disclosure": "逐项定性披露，不汇总成成本数字、不给点估计；不进 B.P_MAIN_OPT、不进状态机绩效比较、不用于第 5 条存废裁决",
+     "c0Applicable": true,
+     "c1c2Applicable": "季度再平衡口径仍适用（恢复/复核相关项在净值层不适用）"
+    },
+    {
+     "seq": 6,
+     "name": "台账与人工执行出错概率",
+     "category": "摩擦",
+     "note": "操作风险，非市场摩擦",
+     "disclosure": "逐项定性披露，不汇总成成本数字、不给点估计；不进 B.P_MAIN_OPT、不进状态机绩效比较、不用于第 5 条存废裁决",
+     "c0Applicable": true,
+     "c1c2Applicable": "季度再平衡口径仍适用（恢复/复核相关项在净值层不适用）"
+    }
+   ],
+   "exDivCashCheck": {
+    "dimension": "股息处理",
+    "question": "跨除息日 ETF 分红现金是否计入 nav（否则 dd 虚增可能误触发）",
+    "conclusion": "引擎逐日按 divCash=(vD·dyD+vH·dyH)/252 把股息现金计入 cash，并反映在 nav_i（含当日）与 dd=1-nav_i/V 中；故不存在「分红现金未进 nav 导致 dd 虚增」的建模缺口。主口径触发 0 次，未发生误触发。",
+    "caveat": "但本地仅有半年度 34 点插值股息率、无逐日实际除息日历/权益登记日/ETF 红利到账日；无法逐笔核对「除息日 vs 分红到账日」的时点差；该项「数据待更新」，仅作定性核对留痕，不改任何绩效数字。",
+    "separateFrom": "本项是「触发判定口径」问题（分红现金是否进 nav 影响 dd），与「恢复日跨季/跨除息日耦合」「recoverIdx 分布」「E3 跨季标记」（时点问题）不是同一件事，勿合并或相互替代（候选卡 C0 §④ / 主理人 §3.7-6）。"
+   },
+   "costSubjectSeparationRule": "slippage / premiumShock 属价格偏移（价差与折溢价）、market impact 属占 ADV 比例，两者科目不同、禁止叠加进「10 万元冲击成本可忽略」结论；报告须分开列示以免下游误读为自相矛盾",
+   "note": "本表全部数字来自本地单一数据源的确定性计算或「仅登记」的权威口径，未引入宏观读数/联网行业权重/ETF 实测数据进净值"
+  }
+ },
+ "cards": {
+  "C0": {
+   "label": "维持 v1.5 不改（基线对照）",
+   "path": "(ii)",
+   "inMainTest": true,
+   "mainPaths": [
+    "i",
+    "ii",
+    "iii",
+    "iv"
+   ],
+   "triggerCount": 0,
+   "verdict": "数据不足",
+   "reason": "主口径（q63+真实历史+R=0.20）触发次数=0，触发式净效应不可评估（not estimable）；cutOnce 全期处理事件≤1、独立触发事件=0<3，方差/置信区间/功效数值数学上不存在。不得写成「有效」或「无效」。V0 四档逐位对齐通过（整批有效前提满足）。",
+   "propositions": {
+    "C0-P1": "数据不足（触发式净效应不可评估）",
+    "C0-P2": "成立（口径敏感性，已由 P2 160 变体网格 + 日历网格交回直接引用：现金-1pp / 全期1.3% / carry归零 / q63→calQ 各自独立使 R=20% 触发或余量<0.5pp；口径极差 1.301pp = 主口径余量 0.309pp 的 4.21 倍）",
+    "C0-P3": "数据不足（2015-08/2016-01 触发日无 000922 场内 ETF ⇒ 工具可得性不成立、非冲击成本问题；急性日 IOPV 折溢价、书面复核人工延迟实测分布、代销渠道 SLA 均不可得，只能给档位+定性披露，不得给点估计；不得用宽基腿数据外推）"
+   }
+  },
+  "C1/C1prime": {
+   "label": "删除第 5 条 → 纯治理动作替代（净值恒等）",
+   "path": "(i)",
+   "inMainTest": false,
+   "identityCheck": [
+    {
+     "R": 15,
+     "eq": 30,
+     "navLen": 4089,
+     "vs_mixRef_maxAbsDiff": 0,
+     "vs_cost0_diffPP": 0,
+     "note": "enabled:false ⇒ 状态机不改净值；任一 6 维口径/任一成本档下 C1 与 (i) 差恒为 0.000pp（恒等式、非检验结论）"
+    },
+    {
+     "R": 20,
+     "eq": 40,
+     "navLen": 4089,
+     "vs_mixRef_maxAbsDiff": 0,
+     "vs_cost0_diffPP": 0,
+     "note": "enabled:false ⇒ 状态机不改净值；任一 6 维口径/任一成本档下 C1 与 (i) 差恒为 0.000pp（恒等式、非检验结论）"
+    },
+    {
+     "R": 25,
+     "eq": 50,
+     "navLen": 4089,
+     "vs_mixRef_maxAbsDiff": 0,
+     "vs_cost0_diffPP": 0,
+     "note": "enabled:false ⇒ 状态机不改净值；任一 6 维口径/任一成本档下 C1 与 (i) 差恒为 0.000pp（恒等式、非检验结论）"
+    },
+    {
+     "R": 30,
+     "eq": 55,
+     "navLen": 4089,
+     "vs_mixRef_maxAbsDiff": 0,
+     "vs_cost0_diffPP": 0,
+     "note": "enabled:false ⇒ 状态机不改净值；任一 6 维口径/任一成本档下 C1 与 (i) 差恒为 0.000pp（恒等式、非检验结论）"
+    }
+   ],
+   "verdict": "数据不足",
+   "reason": "净值恒等、回测不可证伪、属治理动作，需 12 周纸面执行。C1 与 (i) 差恒为 0.000pp 是恒等式、非检验结论；任何「回测显示与不减半无差异 ⇒ 治理动作有效/无效」都是范畴错误。不得包装成「经回测验证的安全替代」。12 周纸面执行未开始。",
+   "propositions": {
+    "C1-P1": "成立（仅指状态机实现正确：四档 R 下 4,089 点逐位对齐 maxAbsDiff=0）；治理/行为价值回测无法回答，需 12 周纸面执行数据；不得写「有效/无效」",
+    "C1-P2": "数据不足（删除执行层收益「成交 66→64、成本节省≤0.2% 账户」只在条款实际触发时成立，主口径 0 次触发，节省在 0~2 次之间、量级过小、不足以单独支撑删除）",
+    "C1-P3": "不适用（纯删除子形态 C1′ 属文档一致性核对，不依赖回测数据）"
+   }
+  },
+  "C2": {
+   "label": "删除第 5 条 + 一次性下调静态目标敞口 E（结构性备选）",
+   "path": "(iv) 语义",
+   "inMainTest": false,
+   "preregIVUnchanged": true,
+   "ePrimeFinalAdoption": "归 Phase 6；Phase 5 只给结构档位 E′=E×{1.0,0.75,0.5} 与单调性方向，不选定 E′、不给 E′ 绩效点估计宣称最优；不得用压力路径或成本敏感性挑 E′/定档",
+   "r2eRecalc": {
+    "rule": "四档一次性整体重算、同一 6 维主口径、固定单一日历口径；q63 主 / calQ 并列披露但不并列为可选参数；禁止只替换 R=20% 一档",
+    "q63Primary": true,
+    "calQParallel": true,
+    "notOptionalParamTable": true,
+    "sixDimLabel": "[权重 75/25 | 现金 分段 3.0/2.3/1.3% | 成本 费5bp+滑点10bp | 成交 T+1 | 再平衡 q63(主)/calQ(并列) | 股息 carry 计入]",
+    "calQCaveat": "calQ 列为「主口径 calQ」常数混合（含股息carry+成本+T+1），与「账户层简化口径 20.928%（现金不计息/无成本/不含股息）」不是同一口径，不可直接相减或并列成区间；两套结果物理分列、不并列为可选参数",
+    "rows": [
+     {
+      "R": 15,
+      "E": 30,
+      "factors": [
+       {
+        "factor": 1,
+        "Eprime": 30,
+        "EprimeRaw": 0.3,
+        "pathName": "(i) [该档基线]",
+        "isIvPrime": false,
+        "q63": {
+         "cagr": 3.209,
+         "mdd": 14.728,
+         "vol": 6.182,
+         "headroomPP": 0.272,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.215,
+         "mdd": 15.843,
+         "vol": 6.245,
+         "headroomPP": -0.843,
+         "ddGeR_days": 12,
+         "mddLeR": false
+        }
+       },
+       {
+        "factor": 0.75,
+        "Eprime": 22.5,
+        "EprimeRaw": 0.225,
+        "pathName": "(iv')",
+        "isIvPrime": true,
+        "q63": {
+         "cagr": 3.008,
+         "mdd": 10.957,
+         "vol": 4.639,
+         "headroomPP": 4.043,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.014,
+         "mdd": 11.826,
+         "vol": 4.689,
+         "headroomPP": 3.174,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       },
+       {
+        "factor": 0.5,
+        "Eprime": 15,
+        "EprimeRaw": 0.15,
+        "pathName": "(iv')",
+        "isIvPrime": true,
+        "q63": {
+         "cagr": 2.781,
+         "mdd": 7.282,
+         "vol": 3.095,
+         "headroomPP": 7.718,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 2.785,
+         "mdd": 7.681,
+         "vol": 3.13,
+         "headroomPP": 7.319,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       }
+      ]
+     },
+     {
+      "R": 20,
+      "E": 40,
+      "factors": [
+       {
+        "factor": 1,
+        "Eprime": 40,
+        "EprimeRaw": 0.4,
+        "pathName": "(i) [该档基线]",
+        "isIvPrime": false,
+        "q63": {
+         "cagr": 3.433,
+         "mdd": 19.691,
+         "vol": 8.242,
+         "headroomPP": 0.309,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.442,
+         "mdd": 20.924,
+         "vol": 8.318,
+         "headroomPP": -0.924,
+         "ddGeR_days": 7,
+         "mddLeR": false
+        }
+       },
+       {
+        "factor": 0.75,
+        "Eprime": 30,
+        "EprimeRaw": 0.3,
+        "pathName": "(iv')",
+        "isIvPrime": true,
+        "q63": {
+         "cagr": 3.209,
+         "mdd": 14.728,
+         "vol": 6.182,
+         "headroomPP": 5.272,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.215,
+         "mdd": 15.843,
+         "vol": 6.245,
+         "headroomPP": 4.157,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       },
+       {
+        "factor": 0.5,
+        "Eprime": 20,
+        "EprimeRaw": 0.2,
+        "pathName": "(iv) [预注册，eq=0.20]",
+        "isIvPrime": false,
+        "q63": {
+         "cagr": 2.936,
+         "mdd": 9.746,
+         "vol": 4.124,
+         "headroomPP": 10.254,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 2.941,
+         "mdd": 10.445,
+         "vol": 4.17,
+         "headroomPP": 9.555,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       }
+      ]
+     },
+     {
+      "R": 25,
+      "E": 50,
+      "factors": [
+       {
+        "factor": 1,
+        "Eprime": 50,
+        "EprimeRaw": 0.5,
+        "pathName": "(i) [该档基线]",
+        "isIvPrime": false,
+        "q63": {
+         "cagr": 3.607,
+         "mdd": 24.469,
+         "vol": 10.306,
+         "headroomPP": 0.531,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.62,
+         "mdd": 25.712,
+         "vol": 10.389,
+         "headroomPP": -0.712,
+         "ddGeR_days": 3,
+         "mddLeR": false
+        }
+       },
+       {
+        "factor": 0.75,
+        "Eprime": 37.5,
+        "EprimeRaw": 0.375,
+        "pathName": "(iv')",
+        "isIvPrime": true,
+        "q63": {
+         "cagr": 3.381,
+         "mdd": 18.468,
+         "vol": 7.727,
+         "headroomPP": 6.532,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.39,
+         "mdd": 19.682,
+         "vol": 7.8,
+         "headroomPP": 5.318,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       },
+       {
+        "factor": 0.5,
+        "Eprime": 25,
+        "EprimeRaw": 0.25,
+        "pathName": "(iv')",
+        "isIvPrime": true,
+        "q63": {
+         "cagr": 3.078,
+         "mdd": 12.173,
+         "vol": 5.153,
+         "headroomPP": 12.827,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.084,
+         "mdd": 13.186,
+         "vol": 5.208,
+         "headroomPP": 11.814,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       }
+      ]
+     },
+     {
+      "R": 30,
+      "E": 55,
+      "factors": [
+       {
+        "factor": 1,
+        "Eprime": 55,
+        "EprimeRaw": 0.55,
+        "pathName": "(i) [该档基线]",
+        "isIvPrime": false,
+        "q63": {
+         "cagr": 3.676,
+         "mdd": 26.792,
+         "vol": 11.341,
+         "headroomPP": 3.208,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.692,
+         "mdd": 28.004,
+         "vol": 11.425,
+         "headroomPP": 1.996,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       },
+       {
+        "factor": 0.75,
+        "Eprime": 41.25,
+        "EprimeRaw": 0.4125,
+        "pathName": "(iv')",
+        "isIvPrime": true,
+        "q63": {
+         "cagr": 3.457,
+         "mdd": 20.298,
+         "vol": 8.5,
+         "headroomPP": 9.702,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.467,
+         "mdd": 21.538,
+         "vol": 8.577,
+         "headroomPP": 8.462,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       },
+       {
+        "factor": 0.5,
+        "Eprime": 27.5,
+        "EprimeRaw": 0.275,
+        "pathName": "(iv')",
+        "isIvPrime": true,
+        "q63": {
+         "cagr": 3.145,
+         "mdd": 13.457,
+         "vol": 5.668,
+         "headroomPP": 16.543,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        },
+        "calQ": {
+         "cagr": 3.151,
+         "mdd": 14.525,
+         "vol": 5.727,
+         "headroomPP": 15.475,
+         "ddGeR_days": 0,
+         "mddLeR": true
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "ivPrime": {
+    "needed": true,
+    "reason": "C2 结构档位含 E′≠0.20 的档（0.75 系数档 + 其余三档 R 的所有档），与脚手架登记的 PATHS.iv（eq 固定 0.20）不同，故须在四条 PATHS 之外增跑 eq=E′、enabled:false 的常数混合路径并显式命名 (iv′)；不改动预注册主检验的 (iv)",
+    "count": 7,
+    "list": [
+     {
+      "R": 15,
+      "E": 30,
+      "factor": 0.75,
+      "Eprime": 22.5,
+      "q63_mdd": 10.957,
+      "calQ_mdd": 11.826
+     },
+     {
+      "R": 15,
+      "E": 30,
+      "factor": 0.5,
+      "Eprime": 15,
+      "q63_mdd": 7.282,
+      "calQ_mdd": 7.681
+     },
+     {
+      "R": 20,
+      "E": 40,
+      "factor": 0.75,
+      "Eprime": 30,
+      "q63_mdd": 14.728,
+      "calQ_mdd": 15.843
+     },
+     {
+      "R": 25,
+      "E": 50,
+      "factor": 0.75,
+      "Eprime": 37.5,
+      "q63_mdd": 18.468,
+      "calQ_mdd": 19.682
+     },
+     {
+      "R": 25,
+      "E": 50,
+      "factor": 0.5,
+      "Eprime": 25,
+      "q63_mdd": 12.173,
+      "calQ_mdd": 13.186
+     },
+     {
+      "R": 30,
+      "E": 55,
+      "factor": 0.75,
+      "Eprime": 41.25,
+      "q63_mdd": 20.298,
+      "calQ_mdd": 21.538
+     },
+     {
+      "R": 30,
+      "E": 55,
+      "factor": 0.5,
+      "Eprime": 27.5,
+      "q63_mdd": 13.457,
+      "calQ_mdd": 14.525
+     }
+    ]
+   },
+   "monotonicity": {
+    "note": "q63 主口径下 MDD 随 E′ 下降单调下降、CAGR 亦单调下降（收益-回撤偏好权衡，非优化结果）",
+    "rows": [
+     {
+      "R": 15,
+      "E": 30,
+      "mddSeq": [
+       14.728,
+       10.957,
+       7.282
+      ],
+      "cagrSeq": [
+       3.209,
+       3.008,
+       2.781
+      ],
+      "mddMonotoneDown": true,
+      "cagrMonotoneDown": true
+     },
+     {
+      "R": 20,
+      "E": 40,
+      "mddSeq": [
+       19.691,
+       14.728,
+       9.746
+      ],
+      "cagrSeq": [
+       3.433,
+       3.209,
+       2.936
+      ],
+      "mddMonotoneDown": true,
+      "cagrMonotoneDown": true
+     },
+     {
+      "R": 25,
+      "E": 50,
+      "mddSeq": [
+       24.469,
+       18.468,
+       12.173
+      ],
+      "cagrSeq": [
+       3.607,
+       3.381,
+       3.078
+      ],
+      "mddMonotoneDown": true,
+      "cagrMonotoneDown": true
+     },
+     {
+      "R": 30,
+      "E": 55,
+      "mddSeq": [
+       26.792,
+       20.298,
+       13.457
+      ],
+      "cagrSeq": [
+       3.676,
+       3.457,
+       3.145
+      ],
+      "mddMonotoneDown": true,
+      "cagrMonotoneDown": true
+     }
+    ]
+   },
+   "verdict": "通过（限「静态降 E 前半命题」）",
+   "reason": "(iv)-(i) 纯静态降 E 效应在 4,089 日样本上可估计、MDD 随 E′ 下降单调、成本后符号不变、四档整体重算且 q63/calQ 并列披露；但「达 R 才降 E 的时机正确性」不可证伪（属治理/偏好判断，不得写成回测结论），E′ 最终采纳归 Phase 6，且不得据此宣称「达 R 才降 E 无效」。",
+   "propositions": {
+    "C2-P1": "成立（前半：常数敞口对照下 MDD 改善随 E′ 下降单调、成本后符号不变、(iv)-(i) 在 4,089 日样本可估计；V0 已逐位对齐）",
+    "C2-P2": "不适用（非经验命题：「达 R 那一刻是否正确时机」需反事实，更早=择时违反第 4 条、更晚=同一规则，两者都不可由现有数据构造；不得写成「回测证明有效/无效」）",
+    "C2-P3": "成立（四档一次性整体重算、固定单一日历 q63 主 + calQ 并列披露、同一 6 维主口径、两套结果不并列为可选参数、未只替换 R=20% 一档）"
+   }
+  }
+ },
+ "insufficientList": [
+  "C0 主口径触发式净效应：不可评估（触发 0 次、独立事件 0<3、方差不存在）",
+  "C0-P3 / ETF E1：2015-08、2016-01 触发日无 000922 场内 ETF（工具可得性不成立、非冲击成本问题），不得用宽基腿数据外推",
+  "红利 D1/D2 第三口径：季节性 DPS 逐日除息日历「数据待更新」，第三口径数据不足、本轮未检验",
+  "ETF 未建模摩擦：急性日 IOPV 折溢价日频序列、书面复核人工延迟实测分布、本账户代销渠道 SLA 均不可得，只能给档位+定性披露、不得给点估计",
+  "跨除息日分红到账时点：逐笔「除息日 vs 到账日」无法核对（数据待更新），仅定性留痕",
+  "C1 治理/行为价值：回测无法回答，需 12 周纸面执行（未开始）",
+  "E′ 最终采纳档位：归 Phase 6，Phase 5 只给结构档位与单调性、不定档",
+  "逐日实测货基净值 / 日度全量估值 / 000922 行业权重统一口径 / 12 周纸面执行数据：数据待更新"
+ ],
+ "reproducibility": {
+  "runtime": "Node v22.22.2；工作目录 E:/Desktop/investment；无第三方 npm 依赖",
+  "scripts": [
+   "phase5_run.js（本文件）",
+   "phase5_sensitivity.js（C 表全矩阵 + 压力路径 A/B/C）"
+  ],
+  "dataFiles": [
+   "phase5_backtest_data.json",
+   "phase5_backtest_stdout.txt"
+  ],
+  "commands": "node phase5_run.js && node phase5_sensitivity.js",
+  "metricsCaliber": "cagr=nav[end]/nav[0]^(252/len)-1；mdd 相对历史净资产高水位 V；vol=日收益总体标准差×√252；winRate=日收益>0 占比；sharpe=(cagr-现金cagr)/vol；turnover=累计成交额/初始净值",
+  "randomSeed": "主回测（本文件）无随机计算，全为确定性扫描；合成压力路径由 phase5_sensitivity.js 另设并显式记录固定种子",
+  "toolAndDate": "价格 东方财富本地快照 2026-11-06；估值 NeoData index_valuation fetched 2026-11-07；现金利率 v1.5 假设；本地 Node 重算 2026-11-07"
+ },
+ "limits": [
+  "单一样本 2010-01-04~2026-11-06（4,089 日），无第二独立样本；cutOnce 下事件稀疏/方差不可估计；MDD 单点极值对触发日/再平衡时点极敏感",
+  "价格指数不含股息（靠 34 点半年度插值近似）；现金利率为三段年度常数近似；成本 5bp+10bp 无实测成交额/价差支撑；季度再平衡 63 交易日近似",
+  "工具可得性：2010-2019 无 000922 场内 ETF，回测隐含「全期可按收盘价成交两类工具」在工具层不成立（定性局限，不改任何绩效数字）",
+  "压力路径 A/B/C 全部为情景假设、非历史事实、非预测，构造锚来自同一历史序列、不独立；A/B 明确无反弹、结构性偏向保护侧；不是样本外验证",
+  "书面复核延迟 reviewLagDays 是建模假设、非实测；回测不模拟人工判断（避免隐性择时）",
+  "12 周纸面执行仍未开始，是正式投入真金白银前唯一剩余关卡；本卡所有内容为研究设计，不替代纸面执行",
+  "不对第 5 条存废下结论（归 Phase 6）；不推荐具体产品；不把风险信号写成自动触发条件；不承诺收益、不建议加杠杆、不提供代客交易或规避监管建议",
+  "历史回测不代表未来收益；不得用样本内最优参数当结论"
+ ],
+ "sensitivity": {
+  "status": "completed",
+  "realHistoryGridCells": 160,
+  "signMatrixCells": 96,
+  "stressPathCombos": 36,
+  "stressPathEvaluated": 35,
+  "stressPathInvalid": 1,
+  "etfCostSensCells": 36,
+  "dpsSeparationImplemented": true,
+  "calQParallelDisclosed": true,
+  "dividendTrichotomy": 3,
+  "unmodeledFrictionItems": 6,
+  "note": "全矩阵按维度分层报完整分布，禁止只报最优单元；预注册之外只做符号一致性计数；压力路径与成本敏感性不进主结论、不用于选参数"
+ },
+ "propositions": {
+  "industry": {
+   "title": "行业侧 A1~A4 / 命题 1~4",
+   "note": "急性段缓冲 0.01~0.49pp 为「回撤幅度 pp」；+0.48pp/纯carry 0.21pp 为「CAGR pp/年」；两套量纲不可相减/互证。2020 段 2.68pp 接近失效边界须逐段报告、不得平均",
+   "seg2020": "2020-03 疫情段权重自由度 2.68pp 接近「任一段权重调整 >2pp 改善」的失效边界；逐段：2015/2016 极差 0.08~0.26pp、2020 为 2.68pp、corr 0.9637~0.9851；慢性段 2022/2021-2024 分开报告、不与急性段平均",
+   "rows": [
+    {
+     "id": "A1/命题1",
+     "verdict": "成立（方向）",
+     "basis": "急性段 corr>0.9、账户层缓冲<0.4pp、E 减半改善≥3pp；但 2020 段 2.68pp 接近失效边界，逐段报告、不平均"
+    },
+    {
+     "id": "A2/命题2",
+     "verdict": "成立",
+     "basis": "剔除 2015 段后 corr 0.8524>0.7、2018/2020 corr>0.9、缓冲<1pp，不翻转（P2 §5.3 逐位确认）"
+    },
+    {
+     "id": "A3/命题3",
+     "verdict": "数据不足",
+     "basis": "净效应符号需真实触发事件；主口径触发 0 次 ⇒ (ii)≡(i)、不可评估；原「MDD改善>1pp且年化损失<0.3pp」判据被口径噪声淹没、不具判别力"
+    },
+    {
+     "id": "A4/命题4",
+     "verdict": "成立（已裁定）",
+     "basis": "160 变体网格核心合理变体 R=15/20/25% 触发 20/22/8 个；单变量现金-1pp/全期1.3%/carry归零各自独立使 R=20% 触发；改写「边界敏感、非结构性免疫」"
+    }
+   ]
+  },
+  "quant": {
+   "title": "量化 Q1~Q3 / A-1~A-9",
+   "rows": [
+    {
+     "id": "Q1",
+     "verdict": "成立（结构性判定）",
+     "basis": "主口径四档触发 0 次、cutOnce 处理事件≤1、独立事件(gap63)=0、4 折仅 1 折含信息、n<2 ⇒ 方差/CI/t 检验不存在；净效应不可估计"
+    },
+    {
+     "id": "Q2",
+     "verdict": "成立（已满足）",
+     "basis": "现金-1pp/全期1.3%/carry归零各自独立使 R=20% 触发 1 次；去T+1 余量 +1.055pp；q63→calQ 19.627%→20.928% 触发翻转；口径极差 1.301pp = 余量 0.309pp 的 4.21 倍"
+    },
+    {
+     "id": "Q3",
+     "verdict": "前半成立/后半不适用",
+     "basis": "前半：(iv)-(i) 在 4,089 日可估计、MDD 随 E′ 下降单调、成本后符号不变；后半「达 R 才降 E 时机正确性」不可证伪（反事实需更早=择时/更晚=同一规则），属治理/偏好判断"
+    },
+    {
+     "id": "A-1",
+     "verdict": "数据不足",
+     "basis": "主口径触发次数=0 ⇒ 不可评估（用零触发模板）"
+    },
+    {
+     "id": "A-2",
+     "verdict": "数据不足",
+     "basis": "独立事件(gap63)=0 <3，集中于无事件；不得做显著性/CI"
+    },
+    {
+     "id": "A-3",
+     "verdict": "数据不足",
+     "basis": "无触发事件 ⇒ 无 20 日锁定窗口/水下期触发占比；全期水下 96.55% 属固定 E 路径结构诊断、非状态机"
+    },
+    {
+     "id": "A-4",
+     "verdict": "数据不足",
+     "basis": "reviewLag∈{20,40,60,∞} 主口径全部触发 0 次、4 档符号恒等；∞ 等价 recoverMode: none，单列"
+    },
+    {
+     "id": "A-5",
+     "verdict": "数据不足",
+     "basis": "四条路径同时给事件窗口与全期差值：主口径 (ii)≡(i)、(ii)-(iv) 退化为 (i)-(iv) 镜像，不含触发信息"
+    },
+    {
+     "id": "A-6",
+     "verdict": "部分可报",
+     "basis": "cost/换手 counters 已输出（cutCount=0/recoverCount=0/rebalCount=64）；净效应绝对值=0，2×成本判据不进入（触发 0 次先落不可评估）"
+    },
+    {
+     "id": "A-7",
+     "verdict": "数据不足",
+     "basis": "符号一致性计数见 signConsistency：绝大多数单元符号 0、独立事件<3，不构成有效/无效认定"
+    },
+    {
+     "id": "A-8",
+     "verdict": "成立",
+     "basis": "C 表 4 档 R × 6 维口径 MDD/余量/触发次数已按维度分层报完整分布；q63/calQ 并列；「边界敏感、非结构性免疫」标注"
+    },
+    {
+     "id": "A-9",
+     "verdict": "成立（机制检验）",
+     "basis": "压力路径 A/B/C 共 36 个合成单元，35 个已给触发/符号（强制触发、机制是否可能/符号是否翻转）；1 个 B/hi×R=30% 因名义跌幅 -105% 越过物理下限判「不可评估」并留空；附宏观通用声明、不得进主结论/选参数"
+    }
+   ]
+  },
+  "dividend": {
+   "title": "红利 D1~D3",
+   "rows": [
+    {
+     "id": "D1",
+     "verdict": "成立（建模约束）",
+     "basis": "A 路径 dpsFixed 与 mktValueDy 累计 divCash 方向稳定分离（前者不随价格缩水、后者随市值缩水），分离幅度与跌幅单调相关；DPS 与价格分离已由 runSynth.divMode 实现；κ/payout 均标注主观情景参数、无 DPS 绝对额序列不得标定为事实"
+    },
+    {
+     "id": "D2",
+     "verdict": "成立（口径定性）",
+     "basis": "carry 归零仅出现在敏感性网格与数据局限披露两处；R=20% 触发差异 +0.309pp→-0.082pp 归因于股息建模敏感性、非条款结构性触发；第三口径逐日除息日历数据不足、本轮未检验"
+    },
+    {
+     "id": "D3",
+     "verdict": "数据不足",
+     "basis": "状态机实测 carry 缺口：主口径触发 0 次、cutCount=0、recoverCount=0 ⇒ 无减半/恢复动作、缺口恒为 0（非「量级同一数量级」的证据）；ETF 实测分红频率/权益登记日/申赎到账周期缺失 ⇒ 税务影响只能定性披露、不得定量、不得进绩效表"
+    }
+   ]
+  },
+  "etf": {
+   "title": "ETF E1 / E2 / E3",
+   "rows": [
+    {
+     "id": "E1",
+     "verdict": "数据不足",
+     "basis": "2015-08 / 2016-01 触发日无 000922 场内 ETF（最早 2019-11-26）⇒ 工具可得性不成立、非冲击成本问题；急性日 IOPV 折溢价日频序列缺失；不得用宽基腿数据外推"
+    },
+    {
+     "id": "E2",
+     "verdict": "分情形",
+     "basis": "场内+平静日「成立」（5bp+10bp+execLag=1 足够且偏保守）；场外路径/压力日小容量红利 ETF/人工复核延迟「失效」（bp 参数不足以表达，只能给档位+定性披露）；无点估计"
+    },
+    {
+     "id": "E3",
+     "verdict": "条件成立",
+     "basis": "仅当运维写死「执行工具仅限场内 ETF」时名义 20 日≈有效；场外 settleLagDays∈{3,4,7} ⇒ 有效锁定约 24~28+ 交易日；本账户 SLA 未取到 ⇒ 只能给档位、不能给单一数值"
+    }
+   ]
+  },
+  "cards": {
+   "title": "策略卡 C0-P1~P3 / C1-P1~P3 / C2-P1~P3（详见 phase5_backtest_data.json → cards）",
+   "rows": [
+    {
+     "id": "C0-P1",
+     "verdict": "数据不足",
+     "basis": "数据不足（触发式净效应不可评估）"
+    },
+    {
+     "id": "C0-P2",
+     "verdict": "成立",
+     "basis": "成立（口径敏感性，已由 P2 160 变体网格 + 日历网格交回直接引用：现金-1pp / 全期1.3% / carry归零 / q63→calQ 各自独立使 R=20% 触发或余量<0.5pp；口径极差 1.301pp = 主口径余量 0.309pp 的 4.21 倍）"
+    },
+    {
+     "id": "C0-P3",
+     "verdict": "数据不足",
+     "basis": "数据不足（2015-08/2016-01 触发日无 000922 场内 ETF ⇒ 工具可得性不成立、非冲击成本问题；急性日 IOPV 折溢价、书面复核人工延迟实测分布、代销渠道 SLA 均不可得，只能给档位+定性披露，不得给点估计；不得用宽基腿数据外推）"
+    },
+    {
+     "id": "C1-P1",
+     "verdict": "成立（仅实现正确）",
+     "basis": "成立（仅指状态机实现正确：四档 R 下 4,089 点逐位对齐 maxAbsDiff=0）；治理/行为价值回测无法回答，需 12 周纸面执行数据；不得写「有效/无效」"
+    },
+    {
+     "id": "C1-P2",
+     "verdict": "数据不足",
+     "basis": "数据不足（删除执行层收益「成交 66→64、成本节省≤0.2% 账户」只在条款实际触发时成立，主口径 0 次触发，节省在 0~2 次之间、量级过小、不足以单独支撑删除）"
+    },
+    {
+     "id": "C1-P3",
+     "verdict": "不适用",
+     "basis": "不适用（纯删除子形态 C1′ 属文档一致性核对，不依赖回测数据）"
+    },
+    {
+     "id": "C2-P1",
+     "verdict": "成立",
+     "basis": "成立（前半：常数敞口对照下 MDD 改善随 E′ 下降单调、成本后符号不变、(iv)-(i) 在 4,089 日样本可估计；V0 已逐位对齐）"
+    },
+    {
+     "id": "C2-P2",
+     "verdict": "不适用",
+     "basis": "不适用（非经验命题：「达 R 那一刻是否正确时机」需反事实，更早=择时违反第 4 条、更晚=同一规则，两者都不可由现有数据构造；不得写成「回测证明有效/无效」）"
+    },
+    {
+     "id": "C2-P3",
+     "verdict": "成立",
+     "basis": "成立（四档一次性整体重算、固定单一日历 q63 主 + calQ 并列披露、同一 6 维主口径、两套结果不并列为可选参数、未只替换 R=20% 一档）"
+    }
+   ]
+  }
+ },
+ "robustness": {
+  "title": "四、稳健性检验",
+  "rows": [
+   {
+    "item": "样本外 / 4 折 walk-forward",
+    "result": "仅 1/4 折测试段含触发信息、3 折零信息；折间训练段重叠、非独立；V 折首重置口径；不构成样本外验证",
+    "note": "量化 §2.3(b)/§3.7；不得称「样本外验证」"
+   },
+   {
+    "item": "起点敏感性",
+    "result": "起点 2010/2013/2016/2019 分层报告、不平均",
+    "note": "2010-01-04: i_mdd=19.691% / 2013-01-04: i_mdd=20.484% / 2016-01-04: i_mdd=11.63% / 2019-01-04: i_mdd=10.974%"
+   },
+   {
+    "item": "滚动 252 日窗口",
+    "result": "MDD min=2.357% / median=6.332% / max=19.724%（61 窗）",
+    "note": "固定 E 常数混合事后路径诊断、非状态机绩效"
+   },
+   {
+    "item": "参数敏感度（成本/reviewLag/日历/4档R）",
+    "result": "96 真实历史单元 + 8 锚点方向符号计数；绝大多数触发 0 次、符号 0",
+    "note": "见 C 表 signConsistency；禁止 p 值/CI/功效"
+   },
+   {
+    "item": "成本敏感性（前后 / ETF 6 组档位）",
+    "result": "成本前后 B 表并列；ETF 6 组档位仅登记+强制触发场景符号计数，主口径触发 0 次 ⇒ 无成交事件 ⇒ 数据不足",
+    "note": "成本敏感性、非基线口径；禁止替换基线净值"
+   },
+   {
+    "item": "分市场状态（急性/慢性段）",
+    "result": "急性段 2015/2016/2018/2020 与慢性段 2022/2021-2024 分开报告、不平均；2020 段 2.68pp 接近失效边界",
+    "note": "P1 行业侧；本轮回测不重算其量级，仅引用已核对事实"
+   },
+   {
+    "item": "压力路径 A/B/C（构造）",
+    "result": "强制触发下状态机按预期执行 trigger/cut/recover；符号一致性计数；非样本外验证",
+    "note": "人工构造、非历史事实、非预测；不得进主结论/选参数"
+   },
+   {
+    "item": "V0 逐位对齐（整批前提）",
+    "result": "通过（四档 + (iv) maxAbsDiff=0；mixVar 与 mixRef 逐位对齐）",
+    "note": "未对齐则整批作废重跑"
+   }
+  ]
+ }
+}

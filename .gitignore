@@ -15,3 +15,4 @@ _v*.js
 .DS_Store
 Thumbs.db
 desktop.ini
+/.idea/

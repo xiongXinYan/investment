@@ -23,6 +23,21 @@ const kl = f => JSON.parse(fs.readFileSync(P(f), 'utf8')).data.klines.map(s => {
 const A = kl('hs300_daily_2010_2026.json');    // 000300 沪深300，价格指数（不含股息）
 const D = kl('csi_dividend_2010_2026.json');   // 000922 中证红利，价格指数（不含股息）
 const N = A.length, DATES = A.map(x => x.d);
+
+// ---- 对齐守卫（审计 1.rows.align）----
+// 全仓库按索引对齐两个序列（rD(i)=D[i]/D[i-1]），一旦行数或日期不一致，所有以
+// 索引访问的收益、回撤、再平衡都会静默错位，且不会抛错。这里改为加载即失败。
+if (D.length !== A.length) {
+  throw new Error('[phase2_indices] 两个指数行数不一致：hs300=' + A.length + ' / 000922=' + D.length +
+    '。按索引对齐的前提不成立，禁止出数。先跑 node data_audit.js 定位。');
+}
+for (let i = 0; i < A.length; i++) {
+  if (A[i].d !== D[i].d) {
+    throw new Error('[phase2_indices] 第 ' + i + ' 行日期不一致：hs300=' + A[i].d + ' / 000922=' + D[i].d +
+      '。禁止按索引对齐，先跑 node data_audit.js 定位。');
+  }
+}
+
 const V = require('./valuation_series.js');    // NeoData 半年度 34 点线性插值股息率
 
 const idxOf = d => { const i = DATES.findIndex(x => x >= d); return i < 0 ? N - 1 : i; };
@@ -46,6 +61,8 @@ const COST_T0 = { tradeFee: 0.0005, slippage: 0.001, divTax: 0, execLag: 0 };
 const COST_T1 = { tradeFee: 0.0005, slippage: 0.001, divTax: 0, execLag: 1 };
 const COST_T1_TAX = { tradeFee: 0.0005, slippage: 0.001, divTax: 0.10, execLag: 1 };
 const DIV_IN = { dyH: V.dyHS, dyD: V.dyHL }, DIV_OUT = { dyH: 0, dyD: 0 };
+// 无前视股息率（阶梯，仅用已发生观测）——审计 7.dy.lookahead 的对照口径
+const DIV_IN_NL = { dyH: V.dyHS_nl, dyD: V.dyHL_nl };
 // v1.5 主口径（75/25 执行口径）—— Phase 5 状态机的默认输入基线
 const P_MAIN_OPT = Object.assign({ eq: 0.40, w: 0.25, rebal: 'reset', interval: 63, cashRate: SEG_RATE }, COST_T1, DIV_IN);
 const P_AUDIT_BASE = Object.assign({ eq: 0.40, w: 0.30, rebal: 'reset', interval: 63, cashRate: 0.025 }, COST0, DIV_IN);
@@ -68,7 +85,7 @@ const HIST_DD = BASE.historicalDrawdowns;
 
 module.exports = {
   N, DATES, A, D, V, idxOf, rH, rD, rEq, corr, mddOf,
-  R2EQ, SEG_RATE, SEG_UP, SEG_DN, COST0, COST_T0, COST_T1, COST_T1_TAX, DIV_IN, DIV_OUT,
+  R2EQ, SEG_RATE, SEG_UP, SEG_DN, COST0, COST_T0, COST_T1, COST_T1_TAX, DIV_IN, DIV_IN_NL, DIV_OUT,
   P_MAIN_OPT, P_AUDIT_BASE, CAL_Q, Q63, quarterEndIndices,
   BASE, SEGMENTS, LOW_POINTS, EXCLUDE_2015, HIST_DD
 };

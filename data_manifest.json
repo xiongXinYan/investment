@@ -1,0 +1,29 @@
+{
+ "note": "数据快照清单。任何一份输入文件变动都会改变 sha256，回测结果必须重新出数。",
+ "generatedAt": "2026-11-08T02:40:15.818Z",
+ "verdict": "PASS_WITH_WARNINGS",
+ "span": {
+  "N": 4089,
+  "calYears": 16.8378,
+  "daysPerYear": 242.85,
+  "start": "2010-01-04",
+  "end": "2026-11-06"
+ },
+ "files": {
+  "hs300": {
+   "file": "hs300_daily_2010_2026.json",
+   "bytes": 85986,
+   "sha256": "21b06477402d34c9740be1454a9c7638080030b14777fb27178892999b4cb9a2"
+  },
+  "dividend": {
+   "file": "csi_dividend_2010_2026.json",
+   "bytes": 85986,
+   "sha256": "abd331c7c487943bb71783cd0c0c0cd00f207e5f689eff36d86fd00137c8ea08"
+  },
+  "valuation": {
+   "file": "valuation_semiannual_2010_2026.json",
+   "bytes": 4063,
+   "sha256": "1542db07228da6481823a72bc2e6c65723328c255fc6ce0d8bfa7aea49aa76d5"
+  }
+ }
+}

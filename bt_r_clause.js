@@ -73,6 +73,8 @@ const P = f => path.join(__dirname, f);
 const B = require('./phase2_indices.js');
 
 const FEE_ANN = 0.005;   // 权益端年化管理费，沿用 bt_final.js:15
+// 触发阈值比较容差：dd 与 R 都是浮点，恰好相等时不可依赖 >= 的精确语义（审计 D3）
+const TRIGGER_EPS = 1e-9;
 const A = B.A, D = B.D, DATES = B.DATES, N = B.N;
 const CAL_Q_SET = new Set(B.CAL_Q);
 
@@ -366,7 +368,7 @@ function runRClause(cfg) {
   const nav = [], ddArr = [], VArr = [], eqTargetArr = [], eqActualArr = [], wInnerArr = [];
   const events = [], triggers = [];
   let rebalCount = 0, cutCount = 0, recoverCount = 0;
-  let turnover = 0, feePaid = 0, taxPaid = 0, sameDayMultiAction = 0;
+  let turnover = 0, feePaid = 0, taxPaid = 0, sameDayMultiAction = 0, supersededRebal = 0;
 
   // 按目标敞口 + 75/25 重置份额（复刻 mix.doRebal，want = t * target）
   const doReset = (idx, target, kind) => {
@@ -396,7 +398,12 @@ function runRClause(cfg) {
     taxPaid += tax;
 
     // ---- B. 执行 T+1 挂单（用【当日】收盘价成交，即昨日信号今日成交） ----
-    if (pendingCut) { doReset(i, eqTarget, 'cut'); pendingCut = false; }
+    if (pendingCut) {
+      doReset(i, eqTarget, 'cut'); pendingCut = false;
+      // 减半已把权重重置到 eqTarget，同日挂起的季度再平衡不再重复下单
+      // （原实现会二次 doReset 到 (t−cost)·eqTarget，产生虚假成交与成本；审计 D6）
+      if (pendingRebal) { pendingRebal = false; sameDayMultiAction++; supersededRebal++; }
+    }
     if (pendingRecover) {
       doReset(i, eqTarget, 'recover'); pendingRecover = false;
       if (pendingRebal) { pendingRebal = false; sameDayMultiAction++; }  // 兼任，不重复成交
@@ -441,7 +448,9 @@ function runRClause(cfg) {
     eqActualArr.push(eqNow / (navI || 1)); wInnerArr.push(uD * D[i].c / (eqNow || 1));
 
     // ---- E. 触发判定（收盘后可知）；挂 pendingCut，次日成交，绝不当日成交 ----
-    if (rc.enabled && !cutDone && dd >= rc.R) {
+    // 容差说明：dd = 1 − nav/V 在十进制下几乎不可能恰好等于 R，直接用 >= 会漏判
+    // 「正好触及 R」这一最需要触发的临界点（与纸面执行台账同一类缺陷，审计 D3）。
+    if (rc.enabled && !cutDone && dd >= rc.R - TRIGGER_EPS) {
       cutDone = true; triggerIdx = i; lockUntilIdx = i + rc.lockDays;
       const before = eqTarget;
       eqTarget = rc.eqBase * rc.cutRatio;
@@ -476,7 +485,7 @@ function runRClause(cfg) {
     nav, dd: ddArr, V: VArr, eqTarget: eqTargetArr, eqActual: eqActualArr, wInner: wInnerArr,
     events, triggers,
     counters: { rebalCount, cutCount, recoverCount, turnover, feePaid, taxPaid,
-      totalResetCount: rebalCount + cutCount + recoverCount, sameDayMultiAction },
+      totalResetCount: rebalCount + cutCount + recoverCount, sameDayMultiAction, supersededRebal },
     // ★ 不产出任何策略绩效数字 ★
     metrics: null,
     metricsNote: '待 Phase 5：本脚手架不产出 cagr/mdd/vol/sharpe/胜率/换手/超额等任何策略绩效数字',
