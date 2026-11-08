@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>回测报告 v1.6｜第 5 条存废与静态敞口权衡</title>
+<style>
+:root{
+  --ink:#1f2937; --ink2:#4b5563; --ink3:#6b7280;
+  --line:#e5e7eb; --line2:#d1d5db;
+  --bg:#ffffff; --bg2:#f8f9fa; --bg3:#f3f4f6;
+  --risk:#b03a2e; --riskbg:#fdf2f0;
+  --ok:#1e7e54; --okbg:#eef7f2;
+  --warn:#d68910; --warnbg:#fef7e8;
+  --accent:#1f4e79; --accentbg:#eef3f9;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg2); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 80px}
+header{background:var(--bg);border-bottom:1px solid var(--line);padding:40px 0 32px;margin-bottom:32px}
+header .wrap{padding-bottom:0}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px}
+h1{font-size:28px;line-height:1.35;margin:0 0 14px;font-weight:700;letter-spacing:-.01em}
+.meta{font-size:13px;color:var(--ink3);display:flex;flex-wrap:wrap;gap:6px 20px}
+.meta span{white-space:nowrap}
+h2{font-size:20px;margin:44px 0 8px;padding-top:20px;border-top:2px solid var(--ink);font-weight:700;letter-spacing:-.01em}
+h2 .num{color:var(--ink3);font-weight:600;margin-right:10px;font-variant-numeric:tabular-nums}
+h3{font-size:16px;margin:26px 0 8px;font-weight:650;color:var(--ink)}
+p{margin:10px 0}
+small,.small{font-size:13px;color:var(--ink2)}
+.lead{font-size:16px;color:var(--ink2)}
+
+.card{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:16px 0}
+.card.tight{padding:16px 18px}
+.hero{background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:22px 24px;margin:20px 0}
+.hero .big{font-size:17px;line-height:1.7;font-weight:600}
+.hero .sub{font-size:14px;color:var(--ink2);margin-top:10px}
+
+.flag{border-radius:10px;padding:16px 18px;margin:16px 0;font-size:14px}
+.flag.risk{background:var(--riskbg);border:1px solid #f0cfc9}
+.flag.ok{background:var(--okbg);border:1px solid #cfe8db}
+.flag.warn{background:var(--warnbg);border:1px solid #f3e0b8}
+.flag.accent{background:var(--accentbg);border:1px solid #d3e0ee}
+.flag b{font-weight:700}
+
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;background:var(--bg)}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--bg3);font-weight:650;font-size:12.5px;color:var(--ink2);white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:#fbfbf8}
+tr.hl2 td{background:var(--okbg)}
+tbody tr:hover td{background:#fafafa}
+tr.hl2:hover td{background:#e6f4ec}
+.tbl-note{font-size:12px;color:var(--ink3);margin:-6px 0 18px}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11.5px;font-weight:600;line-height:1.6}
+.pill.r{background:var(--riskbg);color:var(--risk)}
+.pill.g{background:var(--okbg);color:var(--ok)}
+.pill.w{background:var(--warnbg);color:#8a5b06}
+.pill.n{background:var(--bg3);color:var(--ink2)}
+
+.chart{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:18px 16px 8px;margin:18px 0}
+.chart .cap{font-size:13px;font-weight:650;margin:0 0 4px 6px}
+.chart .cnote{font-size:12px;color:var(--ink3);margin:6px 6px 10px;line-height:1.6}
+svg{display:block;width:100%;height:auto}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:780px){.grid2{grid-template-columns:1fr}}
+.kpi{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.kpi .k{font-size:12px;color:var(--ink3);margin-bottom:6px}
+.kpi .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi .d{font-size:12px;color:var(--ink3);margin-top:4px}
+
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:6px 0}
+code{background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.tag{font-size:11px;color:var(--ink3);border:1px solid var(--line2);border-radius:4px;padding:0 5px;margin-left:6px;white-space:nowrap}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3)}
+footer p{margin:6px 0}
+hr.soft{border:0;border-top:1px dashed var(--line2);margin:28px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">第四轮迭代 · Phase 5 回测报告</div>
+    <h1>第 5 条「R 减半」存废与静态敞口权衡</h1>
+    <div class="meta">
+      <span>版本 v1.6</span>
+      <span>2026-11-08</span>
+      <span>样本 2010-01-04 ~ 2026-11-06（4,089 交易日）</span>
+      <span>标的 沪深300 / 中证红利 / 现金</span>
+      <span>口径 75/25 · q63 · carry 计入</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 0 核心结论 ============ -->
+<div class="hero">
+  <div class="big">在预注册主口径下，第 5 条<b>触发 0 次</b>，三条含条款路径逐位恒等，触发式净效应<b>不可评估（not estimable）</b>——既不构成「有效」的证据，也不构成「无效」的证据。</div>
+  <div class="sub">可报告的只有两件事：① 纯静态降 E 效应可估计（E 40%→20%：MDD −9.945pp、年化 −0.497pp）；② 「按构造不触发」不成立，应改写为「<b>边界敏感、非结构性免疫</b>」——主口径余量仅 0.309pp，而口径极差 1.301pp，是其 4.21 倍。</div>
+</div>
+
+<div class="grid2">
+  <div class="kpi">
+    <div class="k">主口径余量（R=20%，E=40%）</div>
+    <div class="v" style="color:var(--risk)">0.309 pp</div>
+    <div class="d">MDD 19.691% vs R 20% · 已用掉预算 98.5%</div>
+  </div>
+  <div class="kpi">
+    <div class="k">口径极差 / 余量</div>
+    <div class="v" style="color:var(--risk)">4.21 ×</div>
+    <div class="d">1.301pp ÷ 0.309pp · 换一个同样合理的口径即突破 R</div>
+  </div>
+  <div class="kpi">
+    <div class="k">v1.6 修订后（R=20%，E=35%）</div>
+    <div class="v" style="color:var(--ok)">2.766 pp</div>
+    <div class="d">MDD 17.234% · 余量为口径极差的 2.13 倍</div>
+  </div>
+  <div class="kpi">
+    <div class="k">修订代价</div>
+    <div class="v">−0.106 pp/年</div>
+    <div class="d">年化 3.433% → 3.327%（历史样本内）</div>
+  </div>
+</div>
+
+<p class="small" style="margin-top:14px">一句话：本轮真正的优化不在那条睡着的条款，而在<b>「R 预算没有留出任何口径余量」</b>——用约 0.1pp/年的年化代价，把 R 从「名义约束」变成「口径稳健约束」。</p>
+
+<!-- ============ 1 改动清单 ============ -->
+<h2><span class="num">01</span>相对 v1.5 的六项改动</h2>
+
+<table>
+  <thead><tr><th style="width:22%">项</th><th>v1.5</th><th>v1.6</th><th style="width:26%">依据</th></tr></thead>
+  <tbody>
+    <tr class="hl2"><td><b>第 5 条</b></td><td>账户回撤达 R 时<b>把目标敞口减半一次</b>，20 日内不恢复，需书面复核后恢复</td><td><b>只做一次书面复核</b>：不改 E、不改份额、不改 75/25、不暂停再平衡；结论仅用于下次定期审阅</td><td>主口径触发 0 次、净效应不可评估；与第 4 条结构性冲突</td></tr>
+    <tr class="hl2"><td><b>第 1 条 R→E 表</b></td><td>15→30% / 20→40% / 25→50% / 30→55%</td><td><b>15→25% / 20→35% / 25→45% / 30→55%</b>，新增「口径余量 ≥2.7pp」约束</td><td>三档原余量 0.272/0.309/0.531pp，全部小于口径极差 1.301pp</td></tr>
+    <tr><td><b>定性表述</b></td><td>「休眠条款、按构造不触发、结构性免疫」</td><td>「<b>边界敏感、非结构性免疫、口径依赖的边界条款</b>」</td><td>160 口径变体 × 4 档 R；四种合理扰动各自可触发</td></tr>
+    <tr><td><b>披露等级</b></td><td>「不构成尾部保护」（散见正文）</td><td><b>新增独立「无保护声明」</b>，四处强制出现，删除「具备风控」类暗示</td><td>规则与事实一致性</td></tr>
+    <tr><td><b>护栏</b></td><td>三条</td><td>③ 降级为纯文档动作；② 增补「在途天数 / 可用现金口径」；<b>新增 ④ 执行工具口径核对</b></td><td>ETF 侧执行层实测</td></tr>
+    <tr><td><b>已知局限</b></td><td>五项</td><td>新增工具可得性、未建模摩擦 6 项、成本科目分离、标的口径陷阱（<code>510880</code> ≠ 000922）</td><td>ETF 侧实测与质控</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ 2 表 A ============ -->
+<h2><span class="num">02</span>表 A｜触发事件层（主表）</h2>
+<p class="small">表 A 只回答「条款有没有动作」，<b>不含任何绩效数字</b>，也不得当作收益证据。</p>
+
+<table>
+  <thead><tr><th class="num">R</th><th class="num">E</th><th class="num">触发次数</th><th class="num">减半次数</th><th class="num">恢复次数</th><th class="num">历史 MDD</th><th class="num">余量</th><th>判定</th></tr></thead>
+  <tbody>
+    <tr><td class="num">15%</td><td class="num">30%</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">14.728%</td><td class="num">+0.272pp</td><td><span class="pill n">不可评估</span></td></tr>
+    <tr class="hl"><td class="num">20%</td><td class="num">40%</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">19.691%</td><td class="num">+0.309pp</td><td><span class="pill n">不可评估</span></td></tr>
+    <tr><td class="num">25%</td><td class="num">50%</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">24.469%</td><td class="num">+0.531pp</td><td><span class="pill n">不可评估</span></td></tr>
+    <tr><td class="num">30%</td><td class="num">55%</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">26.792%</td><td class="num">+3.208pp</td><td><span class="pill n">不可评估</span></td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">四档全期季度再平衡次数均为 64（q63）。触发 0 次 ⇒ 无 treated units ⇒ 样本方差、置信区间、t 检验、功效数值<b>数学上不存在</b>。</p>
+
+<div class="flag accent">
+  <b>「不可评估」模板（须逐字使用）</b><br>
+  ① 条款在 16.8 年、四档 R 下从未动作，属<b>休眠</b>；② 三条路径逐位恒等是<b>恒等式</b>，不是检验结论；③ 最小余量 0.309pp；④ 使触发成立的最小口径扰动为「现金 −1pp / 全期 1.3% 前瞻 / carry 归零 / q63→calQ」之一，归因于<b>边界敏感而非市场状态</b>。不得写「有效」「无效」「迟早会触发」「结构性免疫」。
+</div>
+
+<h3>非主口径机制证据（只做符号计数，不进主结论）</h3>
+<table>
+  <thead><tr><th>情形</th><th class="num">触发</th><th>首次触发日</th><th class="num">dd</th><th class="num">减半 / 恢复</th><th>备注</th></tr></thead>
+  <tbody>
+    <tr><td>calQ + R=20%（真实历史）</td><td class="num">1</td><td>2016-01-26</td><td class="num">20.076%</td><td class="num">1 / 1</td><td>cut 01-27、锁定至 03-01、recover 03-02；跨季标记均 false；独立事件 1</td></tr>
+    <tr><td>q63 + R=10%（人工收紧冒烟）</td><td class="num">1</td><td>2010-06-29</td><td class="num">—</td><td class="num">1 / —</td><td>非候选卡、非建议参数（D11）</td></tr>
+    <tr><td>q63 + R=15% / R=18%（冒烟）</td><td class="num">1 / 1</td><td>2015-08-24 / 08-25</td><td class="num">—</td><td class="num">1 / 1</td><td>同上；集中于 2015–2016 同一宏观事件</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ 3 表 B ============ -->
+<h2><span class="num">03</span>表 B｜策略绩效层</h2>
+<p class="small">主口径（成本后、R=20% / E=40% 预注册配置）。四路径同数据、同成本、同样本，<b>只更换 <code>rClause</code> 输入</b>。</p>
+
+<table>
+  <thead><tr><th>路径</th><th class="num">年化</th><th class="num">波动</th><th class="num">夏普</th><th class="num">MDD</th><th class="num">胜率</th><th class="num">换手</th><th class="num">超额 vs HS300</th><th class="num">触发</th></tr></thead>
+  <tbody>
+    <tr><td>(i) 不减半（V0 基线）</td><td class="num">3.433%</td><td class="num">8.242%</td><td class="num">0.1441</td><td class="num">19.691%</td><td class="num">52.373%</td><td class="num">1.747</td><td class="num">+2.581pp</td><td class="num">0</td></tr>
+    <tr class="hl"><td>(ii) 减半 + 20 日锁定 + 书面复核恢复</td><td class="num">3.433%</td><td class="num">8.242%</td><td class="num">0.1441</td><td class="num">19.691%</td><td class="num">52.373%</td><td class="num">1.747</td><td class="num">+2.581pp</td><td class="num"><b>0</b></td></tr>
+    <tr><td>(iii) 减半 + 季度再平衡恢复</td><td class="num">3.433%</td><td class="num">8.242%</td><td class="num">0.1441</td><td class="num">19.691%</td><td class="num">52.373%</td><td class="num">1.747</td><td class="num">+2.581pp</td><td class="num">0</td></tr>
+    <tr><td>(iv) 全期静态 eq=0.20（对照，非候选卡）</td><td class="num">2.936%</td><td class="num">4.124%</td><td class="num">0.1676</td><td class="num">9.746%</td><td class="num">53.302%</td><td class="num">1.112</td><td class="num">+2.084pp</td><td class="num">0</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">基准：沪深300 价格指数年化 0.852%、纯现金 2.245%（同一数据源内构造，未另引外部无风险利率）。初始资金归一化 ¥1。<code>ii_vs_i</code> 与 <code>iii_vs_i</code> 的 <code>maxAbsDiff = 0</code>。</p>
+
+<h3>三层差值（全部报告）</h3>
+<table>
+  <thead><tr><th>差值</th><th class="num">年化</th><th class="num">MDD</th><th>含义</th><th>判定</th></tr></thead>
+  <tbody>
+    <tr><td><code>(ii)−(i)</code></td><td class="num">0 pp/年</td><td class="num">0 pp</td><td>总效应（降 E + 触发时机 + 恢复摩擦的混合）</td><td><span class="pill n">恒等式，非结论</span></td></tr>
+    <tr><td><code>(iv)−(i)</code></td><td class="num">−0.497 pp/年</td><td class="num">−9.945 pp</td><td>纯静态降 E 效应（E 40%→20%）</td><td><span class="pill g">可估计</span></td></tr>
+    <tr><td><code>(ii)−(iv)</code></td><td class="num">+0.497 pp/年</td><td class="num">+9.945 pp</td><td>触发时机 + 恢复摩擦的净贡献</td><td><span class="pill n">不可评估（仅镜像）</span></td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">量纲纪律：年化为 <b>pp/年</b>，MDD 为 <b>回撤幅度 pp</b>，两者不可相减或互证。</p>
+
+<!-- ============ 4 静态敞口权衡 ============ -->
+<h2><span class="num">04</span>静态敞口完整权衡曲线</h2>
+<p>同一数据基线、同一 6 维口径、无任何触发条款，只改变常数敞口 E。这张表是本轮最有操作价值的新增内容。</p>
+
+<div class="chart">
+  <div class="cap">图 1｜E 与历史最大回撤（MDD）的关系</div>
+  <svg viewBox="0 0 680 340" role="img" aria-label="敞口 E 与历史最大回撤的关系折线图">
+    <!-- grid -->
+    <g stroke="#e5e7eb" stroke-width="1">
+      <line x1="60" y1="300" x2="640" y2="300"/>
+      <line x1="60" y1="256.7" x2="640" y2="256.7" stroke-dasharray="2 4"/>
+      <line x1="60" y1="213.3" x2="640" y2="213.3" stroke-dasharray="2 4"/>
+      <line x1="60" y1="170" x2="640" y2="170" stroke-dasharray="2 4"/>
+      <line x1="60" y1="126.7" x2="640" y2="126.7" stroke-dasharray="2 4"/>
+      <line x1="60" y1="83.3" x2="640" y2="83.3" stroke-dasharray="2 4"/>
+      <line x1="60" y1="40" x2="640" y2="40" stroke-dasharray="2 4"/>
+    </g>
+    <!-- y labels -->
+    <g fill="#6b7280" font-size="11" text-anchor="end" font-family="sans-serif">
+      <text x="52" y="304">0%</text>
+      <text x="52" y="260">5%</text>
+      <text x="52" y="217">10%</text>
+      <text x="52" y="174">15%</text>
+      <text x="52" y="130">20%</text>
+      <text x="52" y="87">25%</text>
+      <text x="52" y="44">30%</text>
+    </g>
+    <!-- R=20% reference -->
+    <line x1="60" y1="126.7" x2="640" y2="126.7" stroke="#d68910" stroke-width="1.6" stroke-dasharray="6 4"/>
+    <text x="614" y="120" fill="#8a5b06" font-size="11" font-weight="600" text-anchor="end">R = 20%</text>
+    <!-- MDD line -->
+    <polyline fill="none" stroke="#b03a2e" stroke-width="2.4" stroke-linejoin="round"
+      points="60,215.5 140,194.5 220,172.4 300,150.6 380,129.3 460,108.4 540,87.9 620,67.8"/>
+    <!-- points -->
+    <g fill="#b03a2e">
+      <circle cx="60" cy="215.5" r="3.4"/><circle cx="140" cy="194.5" r="3.4"/><circle cx="220" cy="172.4" r="3.4"/>
+      <circle cx="300" cy="150.6" r="4.4" fill="#1e7e54"/><circle cx="380" cy="129.3" r="4.4" fill="#b03a2e"/>
+      <circle cx="460" cy="108.4" r="3.4"/><circle cx="540" cy="87.9" r="3.4"/><circle cx="620" cy="67.8" r="3.4"/>
+    </g>
+    <!-- v1.6 marker -->
+    <line x1="300" y1="150.6" x2="300" y2="300" stroke="#1e7e54" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+    <g font-family="sans-serif">
+      <rect x="214" y="112" width="150" height="34" rx="6" fill="#eef7f2" stroke="#cfe8db"/>
+      <text x="222" y="126" fill="#1e7e54" font-size="11" font-weight="700">v1.6 推荐：E=35%</text>
+      <text x="222" y="139" fill="#1e7e54" font-size="10.5">MDD 17.234% · 余量 2.766pp</text>
+    </g>
+    <!-- v1.5 marker -->
+    <g font-family="sans-serif">
+      <rect x="392" y="92" width="160" height="34" rx="6" fill="#fdf2f0" stroke="#f0cfc9"/>
+      <text x="400" y="106" fill="#b03a2e" font-size="11" font-weight="700">v1.5 示例：E=40%</text>
+      <text x="400" y="119" fill="#b03a2e" font-size="10.5">MDD 19.691% · 余量仅 0.309pp</text>
+    </g>
+    <!-- x labels -->
+    <g fill="#6b7280" font-size="11" text-anchor="middle" font-family="sans-serif">
+      <text x="60" y="318">20%</text><text x="140" y="318">25%</text><text x="220" y="318">30%</text>
+      <text x="300" y="318">35%</text><text x="380" y="318">40%</text><text x="460" y="318">45%</text>
+      <text x="540" y="318">50%</text><text x="620" y="318">55%</text>
+    </g>
+    <text x="350" y="334" fill="#6b7280" font-size="11" text-anchor="middle" font-family="sans-serif">权益敞口 E</text>
+  </svg>
+  <div class="cnote">红点/红线＝各档 E 的历史 MDD；绿点为 v1.6 修订档位（R=20% → E=35%）；橙虚线为 R=20% 预算线。线在橙虚线之上即表示「历史回撤已突破 R」。<b>历史样本内关系，不外推未来。</b></div>
+</div>
+
+<table>
+  <thead><tr><th class="num">E</th><th class="num">年化</th><th class="num">波动</th><th class="num">夏普</th><th class="num">MDD</th><th class="num">相对 R=20% 余量</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td class="num">20%</td><td class="num">2.936%</td><td class="num">4.124%</td><td class="num">0.1677</td><td class="num">9.746%</td><td class="num">+10.254pp</td><td>夏普最高（样本内）</td></tr>
+    <tr><td class="num">25%</td><td class="num">3.079%</td><td class="num">5.153%</td><td class="num">0.1618</td><td class="num">12.173%</td><td class="num">+7.827pp</td><td>v1.6 · R=15% 档</td></tr>
+    <tr><td class="num">30%</td><td class="num">3.209%</td><td class="num">6.182%</td><td class="num">0.1560</td><td class="num">14.728%</td><td class="num">+5.272pp</td><td>保守备选</td></tr>
+    <tr class="hl2"><td class="num">35%</td><td class="num">3.327%</td><td class="num">7.212%</td><td class="num">0.1501</td><td class="num">17.234%</td><td class="num">+2.766pp</td><td><b>v1.6 · R=20% 档（推荐）</b></td></tr>
+    <tr class="hl"><td class="num">40%</td><td class="num">3.433%</td><td class="num">8.242%</td><td class="num">0.1442</td><td class="num">19.691%</td><td class="num">+0.309pp</td><td>v1.5 示例（零余量）</td></tr>
+    <tr><td class="num">45%</td><td class="num">3.527%</td><td class="num">9.273%</td><td class="num">0.1382</td><td class="num">22.102%</td><td class="num" style="color:var(--risk)">−2.102pp</td><td><b>已突破 R=20%</b>；v1.6 · R=25% 档</td></tr>
+    <tr><td class="num">50%</td><td class="num">3.608%</td><td class="num">10.306%</td><td class="num">0.1323</td><td class="num">24.469%</td><td class="num">−4.469pp</td><td>—</td></tr>
+    <tr><td class="num">55%</td><td class="num">3.677%</td><td class="num">11.341%</td><td class="num">0.1263</td><td class="num">26.792%</td><td class="num">−6.792pp</td><td>v1.6 · R=30% 档（不变）</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">口径：<code>[75/25 ｜ 分段现金利率 3.0%/2.3%/1.3% ｜ 费5bp+滑点10bp ｜ T+1 ｜ q63 ｜ carry 计入]</code>。数字由主理人以 Phase 5 同一引擎、同一口径复算（<code>rClause.enabled=false</code>），非 Phase 5 预注册四档结果。</p>
+
+<div class="flag warn">
+  <b>四个必须看懂的读数</b>
+  <ol style="margin:8px 0 0">
+    <li><b>交换比约 1:20</b>：每 +5pp 敞口，年化约 +0.10~0.15pp，MDD 约 +2.4~2.5pp。</li>
+    <li><b>夏普随敞口单调下降</b>（0.1677 → 0.1263）：样本内降低敞口反而提高风险调整后收益。这是事实，但不是「应该降 E」的理由（见第 4 点）。</li>
+    <li><b>E=40% 已用掉 R=20% 预算的 98.5%</b>；E=45% 直接突破（22.102%）。</li>
+    <li>夏普最高 ≠ 应选它：夏普分母是波动，而使用者关心的是回撤深度与资金用途匹配；且样本内现金 2.245% 相对权益 0.852% 异常有利，未必延续。</li>
+  </ol>
+</div>
+
+<h3>为什么必须留口径余量</h3>
+<p>v1.5 的 R→E 表在 R=15%/20%/25% 三档上的余量（0.272 / 0.309 / 0.531pp）<b>全部小于口径极差 1.301pp</b>。这意味着 R 不是「约束」，而是「恰好被历史样本内的一条路径满足」——换口径、换起点、换一段未来样本，R 就会被突破。<b>这不是策略失效，是把拟合残差当成了安全垫。</b></p>
+
+<table>
+  <thead><tr><th class="num">R</th><th class="num">v1.5 的 E</th><th class="num">v1.5 余量</th><th class="num">v1.6 的 E</th><th class="num">v1.6 余量</th><th class="num">余量/口径极差</th><th class="num">年化代价</th></tr></thead>
+  <tbody>
+    <tr><td class="num">15%</td><td class="num">30%</td><td class="num">0.272pp</td><td class="num"><b>25%</b></td><td class="num">2.827pp</td><td class="num">2.17×</td><td class="num">−0.130pp/年</td></tr>
+    <tr class="hl2"><td class="num">20%</td><td class="num">40%</td><td class="num">0.309pp</td><td class="num"><b>35%</b></td><td class="num">2.766pp</td><td class="num">2.13×</td><td class="num">−0.106pp/年</td></tr>
+    <tr><td class="num">25%</td><td class="num">50%</td><td class="num">0.531pp</td><td class="num"><b>45%</b></td><td class="num">2.898pp</td><td class="num">2.23×</td><td class="num">−0.081pp/年</td></tr>
+    <tr><td class="num">30%</td><td class="num">55%</td><td class="num">3.208pp</td><td class="num"><b>55%</b></td><td class="num">3.208pp</td><td class="num">2.47×</td><td class="num">0</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">规则：选使 <code>MDD ≤ R − 2.7pp</code> 的最大 5% 整数档敞口。2.7pp ≈ 2 倍口径极差。若更看重收益，可选「留 1× 口径极差」的档位（27.5/37.5/48/59%）；若更看重回撤，可再降一档。<b>三者都是偏好选择，回测不提供「最优」。</b></p>
+
+<!-- ============ 5 表 C ============ -->
+<h2><span class="num">05</span>表 C｜口径敏感性诊断层</h2>
+<p class="small">表 C 不是「策略绩效」，而是「换一个同样合理的口径，结论会不会翻转」。<b>不得混入表 B 的绩效列</b>。</p>
+
+<div class="chart">
+  <div class="cap">图 2｜五种口径下的全期账户回撤（R=20%，E=40%）</div>
+  <svg viewBox="0 0 680 300" role="img" aria-label="五种口径下最大回撤对比柱状图">
+    <g stroke="#e5e7eb" stroke-width="1">
+      <line x1="60" y1="260" x2="650" y2="260"/>
+      <line x1="60" y1="220" x2="650" y2="220" stroke-dasharray="2 4"/>
+      <line x1="60" y1="180" x2="650" y2="180" stroke-dasharray="2 4"/>
+      <line x1="60" y1="140" x2="650" y2="140" stroke-dasharray="2 4"/>
+      <line x1="60" y1="100" x2="650" y2="100" stroke-dasharray="2 4"/>
+      <line x1="60" y1="60" x2="650" y2="60" stroke-dasharray="2 4"/>
+    </g>
+    <g fill="#6b7280" font-size="11" text-anchor="end" font-family="sans-serif">
+      <text x="52" y="264">18%</text><text x="52" y="224">19%</text><text x="52" y="184">20%</text>
+      <text x="52" y="144">21%</text><text x="52" y="104">22%</text><text x="52" y="64">23%</text>
+    </g>
+    <!-- R line -->
+    <line x1="60" y1="180" x2="650" y2="180" stroke="#d68910" stroke-width="1.6" stroke-dasharray="6 4"/>
+    <text x="644" y="174" fill="#8a5b06" font-size="11" font-weight="600" text-anchor="end">R = 20%</text>
+    <!-- bars: y=260-(v-18)/5*200 ; width 74 -->
+    <!-- 19.691 -> 192.36 ; 20.006 -> 179.76 ; 20.082 -> 176.72 ; 20.924 -> 143.04 -->
+    <g>
+      <rect x="86" y="192.4" width="74" height="67.6" fill="#b03a2e" opacity="0.85" rx="2"/>
+      <rect x="196" y="179.8" width="74" height="80.2" fill="#b03a2e" opacity="0.9" rx="2"/>
+      <rect x="306" y="176.7" width="74" height="83.3" fill="#b03a2e" opacity="0.9" rx="2"/>
+      <rect x="416" y="143.0" width="74" height="117" fill="#b03a2e" rx="2"/>
+    </g>
+    <g fill="#1f2937" font-size="11.5" font-weight="700" text-anchor="middle" font-family="sans-serif">
+      <text x="123" y="186">19.691%</text>
+      <text x="233" y="173">20.006%</text>
+      <text x="343" y="170">20.082%</text>
+      <text x="453" y="136">20.924%</text>
+    </g>
+    <g fill="#4b5563" font-size="11" text-anchor="middle" font-family="sans-serif">
+      <text x="123" y="278">主口径 q63</text>
+      <text x="233" y="278">现金 −1pp</text>
+      <text x="343" y="278">全期 1.3% 前瞻</text>
+      <text x="453" y="278">carry 归零</text>
+      <text x="576" y="278">q63 → calQ</text>
+    </g>
+    <rect x="539" y="143.0" width="74" height="117" fill="#b03a2e" rx="2" opacity="0.55" stroke="#b03a2e" stroke-dasharray="3 2"/>
+    <text x="576" y="136" fill="#1f2937" font-size="11.5" font-weight="700" text-anchor="middle" font-family="sans-serif">20.924%</text>
+    <!-- threshold tag -->
+    <g font-family="sans-serif">
+      <rect x="64" y="196" width="118" height="20" rx="4" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="72" y="210" fill="#6b7280" font-size="10.5">唯主口径未突破</text>
+    </g>
+  </svg>
+  <div class="cnote">前四种为真实历史序列下的口径扰动；calQ 为另一套确定性日历实现（浅色柱）。<b>口径差异是系统性规则差异，不是抽样误差，不是置信区间。</b></div>
+</div>
+
+<table>
+  <thead><tr><th>口径扰动（6 维之一）</th><th class="num">全期 MDD</th><th class="num">vs R=20%</th><th class="num">触发</th><th>首次触发</th></tr></thead>
+  <tbody>
+    <tr class="hl2"><td>主口径（q63）</td><td class="num">19.691%</td><td class="num">−0.309pp</td><td class="num">0</td><td>—</td></tr>
+    <tr><td>现金利率 −1pp</td><td class="num">20.006%</td><td class="num" style="color:var(--risk)">+0.006pp</td><td class="num">1</td><td>2016-01-28</td></tr>
+    <tr><td>全期 1.3% 前瞻压力</td><td class="num">20.006%</td><td class="num" style="color:var(--risk)">+0.006pp</td><td class="num">1</td><td>2016-01-28</td></tr>
+    <tr><td>股息 carry 归零（下界压力）</td><td class="num">20.082%</td><td class="num" style="color:var(--risk)">+0.082pp</td><td class="num">1</td><td>2016-01-28</td></tr>
+    <tr><td>q63 → calQ（日历季末）</td><td class="num">20.924%</td><td class="num" style="color:var(--risk)">+0.924pp</td><td class="num">1</td><td>2016-01-26</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">口径极差 <b>1.301pp</b> = 主口径余量 0.309pp 的 <b>4.21 倍</b>。禁止写法：「MDD 19.63%~20.93%」「20.28% ±0.65pp」「平均约 20.3%」「两套口径结论一致/差异可忽略」。<br>
+注：P2 另有一个 <code>20.928%</code>，属「账户层简化口径（现金不计息/无成本/不含股息）」，与上图 <code>20.924%</code>（P5 同引擎主口径）差 0.004pp，属口径构成差异，<b>不得相减、不得并列成区间</b>。</p>
+
+<h3>全矩阵与符号一致性</h3>
+<table>
+  <thead><tr><th>子矩阵</th><th class="num">单元数</th><th>内容</th><th>结论</th></tr></thead>
+  <tbody>
+    <tr><td>真实历史 6 维口径网格</td><td class="num">160 变体 × 4 档 R = <b>640</b></td><td>每格写全 6 维标签，按 6 维分层报 min/median/max/极差/触发数</td><td>未只报最优单元</td></tr>
+    <tr><td>符号一致性矩阵</td><td class="num">4 成本 × 3 reviewLag × 2 日历 × 4 档 R = <b>96</b></td><td>只计符号（+1 改善 / −1 恶化 / 0 无动作）</td><td>正 0 · 负 18 · 零 78</td></tr>
+    <tr><td>压力路径 A/B/C</td><td class="num">9 组 × 4 档 R = <b>36</b></td><td>人工构造情景，DPS/价格分离，固定种子</td><td>35 评估 / 1 物理越界</td></tr>
+    <tr><td>ETF 成本敏感性</td><td class="num"><b>36</b></td><td>以 calQ 强制触发场景做符号计数</td><td>全 negative；主口径无成交事件 ⇒ 数据不足</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">合计 808 个明确单元。任务书原写「约 1,152」，差异来自<b>组织方式</b>：本轮按「三表分离、C 不混入 B、人工构造不得与真实价格序列混拼」纪律拆为四个独立子矩阵，未做单一全笛卡尔积——因为「构造情景 × 真实成本档」的全交叉会产生语义污染的混合单元，易被误读为可比较的绩效样本。<b>所有维度、6 维标签、分层完整分布均已满足，无维度遗漏。</b></p>
+
+<div class="flag risk">
+  <b>压力路径 A/B/C 的定位（不得越界）</b><br>
+  全部为<b>人工构造情景、非历史事实、非预测</b>；构造锚来自同一历史序列、不独立；A/B 明确无反弹、结构性偏向保护侧。<b>不得用于选参数、不得写进主结论、不得称「样本外验证」。</b>
+</div>
+
+<!-- ============ 6 数据质量问题 ============ -->
+<h2><span class="num">06</span>一处必须单独说明的数据质量问题</h2>
+
+<div class="flag risk">
+  <b>压力路径 <code>B/hi × R=30%</code>（eq=55%）：名义跌幅 −105% 越过物理下限，绩效函数静默返回 MDD=0。</b>
+  <p style="margin:8px 0 0">名义累计跌幅按 <code>−(dropMult × R)</code> 线性外推得 <b>−105%</b>，越过权益 −100% 的物理下限，<code>ln(1+drop)</code> 无实数解 → 净值序列崩溃 → 绩效函数因「净值从未创新高」而<b>静默返回 0 这个看起来合理的假象值</b>。</p>
+  <p style="margin:8px 0 0"><b>处置</b>：判「不可评估」并留空（7 个绩效/触发/符号字段全为 <code>null</code>），<b>不截断到 −95%、不外推、不伪造 0</b>；该单元不参与任何符号计数或均值；同时在绩效函数加非有限值守卫。修复后重跑：36 单元 / 已评估 35 / 不可评估 1 / <code>NaN</code>·<code>Infinity</code> 残留 0 / 双零假象 0。</p>
+</div>
+
+<p><b>这条为什么值得单列</b>：任何自动化回测最危险的错误不是报错，而是<b>安静地返回一个看起来合理的 0</b>。若未做物理边界检查与非有限值守卫，该单元会被读成「加杠杆构造情景下减半条款毫无改善」——一个完全虚构的结论。<b>禁止把该 <code>null</code> 读作 0 或「无改善」。</b></p>
+
+<!-- ============ 7 稳健性 ============ -->
+<h2><span class="num">07</span>稳健性检验（8 项，逐项如实）</h2>
+
+<table>
+  <thead><tr><th style="width:24%">项</th><th>结果</th><th style="width:34%">边界与禁止</th></tr></thead>
+  <tbody>
+    <tr><td>4 折 walk-forward<br><span class="small">1260/630/步长630</span></td><td>仅第 1 折测试段含触发信息，其余 3 折零信息</td><td>折间训练段重叠、非独立；<b>不得称「样本外验证」</b></td></tr>
+    <tr><td>起点敏感性</td><td><code>(i)</code> MDD：2010 起 19.691% / 2013 起 20.484% / 2016 起 11.630% / 2019 起 10.974%</td><td>分层报告、不平均；起点改变即突破 R=20%</td></tr>
+    <tr><td>滚动 252 日<span class="small">61 窗</span></td><td>MDD min 2.357% / median 6.332% / max 19.724%；dd≥20% 窗口 0 个</td><td>固定 E 事后诊断，非状态机绩效</td></tr>
+    <tr><td>参数敏感度</td><td>96 单元 + 8 锚点方向符号计数；绝大多数触发 0 次、符号 0</td><td><b>禁 p 值 / CI / 功效</b></td></tr>
+    <tr><td>成本敏感性</td><td>成本前后并列：<code>(i)</code> 3.528%/18.609% → 3.433%/19.691%；<code>(iv)</code> 2.997%/9.136% → 2.936%/9.746%</td><td>符号不变；ETF 6 组档位仅登记，主口径无成交事件 ⇒ 减半相关成本数据不足</td></tr>
+    <tr><td>分市场状态</td><td>急性 2015/2016/2018/2020 与慢性 2022/2021-2024 分开报告</td><td>2020 段 2.68pp 接近失效边界，<b>逐段不平均</b></td></tr>
+    <tr><td>压力路径 A/B/C</td><td>35/36 单元状态机按预期执行 trigger/cut/recover</td><td>人工构造；不得进主结论</td></tr>
+    <tr><td>V0 逐位对齐</td><td>四档 + <code>(iv)</code> 各 4,089 点 <code>maxAbsDiff = 0</code></td><td>未对齐则整批作废重跑</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ 8 不可评估清单 ============ -->
+<h2><span class="num">08</span>不可评估 / 数据不足清单（8 项 + 1 越界）</h2>
+
+<table>
+  <thead><tr><th class="num">#</th><th style="width:30%">项</th><th>状态与处置</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td>第 5 条主口径触发式净效应</td><td><b>不可评估</b>（触发 0 次、独立事件 0&lt;3、方差不存在）；不得写「有效/无效」</td></tr>
+    <tr><td class="num">2</td><td>2015-08 / 2016-01 触发日的 ETF 工具</td><td><b>工具可得性不成立</b>（无 000922 场内 ETF），属<b>幸存者偏差、非冲击成本问题</b>；不得用宽基腿数据外推</td></tr>
+    <tr><td class="num">3</td><td>季节性 DPS（第三口径）</td><td>逐日除息日历数据待更新，本轮<b>未检验</b></td></tr>
+    <tr><td class="num">4</td><td>ETF 未建模摩擦</td><td>IOPV 折溢价日频序列、书面复核延迟实测分布、代销渠道 SLA 均不可得；只给档位 + 定性</td></tr>
+    <tr><td class="num">5</td><td>跨除息日分红到账时点</td><td>引擎已逐日将 <code>divCash</code> 计入 nav 与 dd（<b>不存在「未进 nav 导致 dd 虚增」的缺口</b>），但到账时点差无法逐笔核对</td></tr>
+    <tr><td class="num">6</td><td>书面复核的治理价值</td><td>回测无法回答；需 <b>12 周纸面执行</b>（未开始）</td></tr>
+    <tr><td class="num">7</td><td>E 的最终取值</td><td>属偏好选择；回测只给权衡表，不给「最优」</td></tr>
+    <tr><td class="num">8</td><td>逐日货基净值 / 日度全量估值 / 000922 行业权重</td><td>数据待更新；行业权重不进引擎</td></tr>
+    <tr><td class="num">+1</td><td>压力路径 <code>B/hi × R=30%</code></td><td><b>物理越界</b>，判不可评估、字段留空（见 §06）</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ 9 结论 ============ -->
+<h2><span class="num">09</span>给决策者的三句话</h2>
+
+<div class="card">
+  <p><b>1. 那条条款可以删了，但理由不是「回测证明它无效」。</b> 它在 16.8 年里从未动作，净效应不可评估——无法证明有效，也无法证明无效。删它的理由是：在一个明确「不做择时」的策略里，不能长期保留一个「暴跌后追跌减仓」的触发开关，且它自己就写着「不构成尾部保护」。保留「达 R 书面复核」作为行为约束，但必须承认那**不是风控**。</p>
+  <p><b>2. 真正该改的是 R→E 表。</b> R=20% 配 E=40%，历史回撤 19.691%，余量 0.309pp——而口径极差 1.301pp。也就是说，「R 没被突破」这件事，靠的是口径选得巧，不是策略稳。下调到 E=35%，年化少 0.106pp，余量变成 2.766pp（口径极差的 2.13 倍）。**这是本轮唯一一处「几乎免费」的改进。**</p>
+  <p><b>3. 本组合没有任何尾部保护机制。</b> 回撤由静态 E 单独决定。R 是资金安排的输入参数，不是回撤上限保证。如果你需要「跌到某处有人替我减仓」，这个方案不适合你——不要因为「有规则」就认为「有风控」。</p>
+</div>
+
+<hr class="soft">
+
+<h3>下一步</h3>
+<ul>
+  <li><b>12 周纸面执行（未开始）</b>：这是正式投入真金白银前<b>唯一剩余的关卡</b>。因第 5 条改为书面复核，验证重点从「能不能执行减半」变成「<b>复核会不会真的发生、会不会变成改仓位的借口</b>」。</li>
+  <li><b>确认 E</b>：按 <code>§8.1</code> 六个数字定 E。若坚持 E=40%，须书面签署「已知悉余量 0.309pp 小于口径极差 1.301pp」。</li>
+  <li><b>写死执行工具口径</b>：基金代码 + 跟踪指数代码 + 快照日；`510880` 跟踪的是 000015，不是 000922。</li>
+</ul>
+
+<footer>
+  <p><b>口径</b>：全部数字为 <code>[权重 75/25 ｜ 现金 分段 3.0%/2.3%/1.3% ｜ 成本 费5bp+滑点10bp ｜ 成交 T+1 ｜ 再平衡 q63 ｜ 股息 carry 计入]</code>，样本 2010-01-04~2026-11-06（4,089 交易日）。与 v1.1 旧引擎、v1.4 口径、v1.5 审计口径 70/30 不可直接比较。</p>
+  <p><b>纪律</b>：本文不含针对触发式净效应的 p 值 / 置信区间 / 功效数值；不含择时建议、收益承诺、具体产品推荐；未把任何风险信号写成自动触发条件；压力路径全部为人工构造、非历史事实、非预测；12 周纸面执行尚未开始。</p>
+  <p><b>可复现</b>：<code>node phase5_run.js</code> 与 <code>node phase5_sensitivity.js</code>（Node v22.22.2，无第三方依赖）；结构化结果见 <code>phase5_backtest_data.json</code>；完整报告见 <code>round4_phase5_backtest.md</code>。</p>
+  <p style="margin-top:14px"><b>本内容为研究分析，不构成投资建议。</b>历史回测基于单一历史样本、含多项建模假设与已知局限，不代表未来收益。市场有风险，投资须谨慎。</p>
+</footer>
+
+</div>
+</body>
+</html>

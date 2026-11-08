@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12 周纸面执行台账 · 投资策略 v1.6</title>
+<style>
+  :root{
+    --ink:#1f2937; --ink2:#4b5563; --ink3:#6b7280;
+    --line:#d8dde3; --line2:#eef1f4;
+    --bg:#ffffff; --bg2:#f7f8fa; --bg3:#fbfcfd;
+    --accent:#1f4e79; --accent2:#e8eff6;
+    --risk:#b03a2e; --riskbg:#fbeeec;
+    --ok:#1e7e54; --okbg:#e9f5ef;
+    --warn:#d68910; --warnbg:#fdf4e3;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg2); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:13.5px; line-height:1.65;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:0 20px 64px}
+  header{background:var(--bg); border-bottom:1px solid var(--line); padding:22px 0 18px; margin-bottom:20px}
+  header .wrap{padding-bottom:0}
+  h1{font-size:20px; margin:0 0 6px; letter-spacing:.2px}
+  .sub{color:var(--ink3); font-size:12.5px}
+  .quant{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"}
+  .tag{display:inline-block; padding:1px 7px; border-radius:3px; font-size:11.5px; line-height:1.7;
+       background:var(--accent2); color:var(--accent); border:1px solid #cddceb; margin-right:5px}
+  .tag.g{background:var(--okbg); color:var(--ok); border-color:#c5e3d3}
+  .tag.r{background:var(--riskbg); color:var(--risk); border-color:#eccfc9}
+  .tag.w{background:var(--warnbg); color:#8a5a00; border-color:#f0dcb4}
+
+  .card{background:var(--bg); border:1px solid var(--line); border-radius:6px; margin-bottom:18px; overflow:hidden}
+  .card-h{padding:12px 16px; border-bottom:1px solid var(--line2); background:var(--bg3);
+          display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+  .card-h h2{font-size:14px; margin:0; font-weight:600}
+  .card-h .hint{font-size:12px; color:var(--ink3)}
+  .card-b{padding:16px}
+
+  .grid{display:grid; gap:14px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:820px){.g4,.g3,.g2{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.g4,.g3,.g2{grid-template-columns:1fr}}
+
+  label.f{display:block; font-size:12px; color:var(--ink3); margin-bottom:4px}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:4px;
+    font-family:inherit; font-size:13px; color:var(--ink); background:var(--bg);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid #b9cfe4; outline-offset:-1px; border-color:#9dbcd8}
+  textarea{resize:vertical; min-height:64px}
+
+  .kpi{display:flex; gap:26px; flex-wrap:wrap; padding:4px 0}
+  .kpi .item{min-width:150px}
+  .kpi .k{font-size:11.5px; color:var(--ink3); margin-bottom:2px}
+  .kpi .v{font-size:23px; font-weight:600; letter-spacing:-.3px; line-height:1.25}
+  .kpi .v.sm{font-size:17px}
+  .up{color:var(--risk)} .down{color:var(--ok)} .neu{color:var(--ink)}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px}
+  th,td{padding:7px 8px; border-bottom:1px solid var(--line2); text-align:right; vertical-align:middle}
+  th{background:var(--bg3); font-weight:600; color:var(--ink2); font-size:12px; white-space:nowrap;
+     border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  td input{padding:4px 6px; font-size:12.5px}
+  tbody tr:hover{background:#fafbfc}
+  tfoot td{font-weight:600; background:var(--bg3); border-top:1px solid var(--line)}
+
+  .btn{display:inline-flex; align-items:center; gap:5px; padding:6px 13px; border-radius:4px;
+       border:1px solid var(--line); background:var(--bg); color:var(--ink); font-size:12.5px;
+       cursor:pointer; font-family:inherit; line-height:1.5}
+  .btn:hover{background:var(--bg2)}
+  .btn.p{background:var(--accent); border-color:var(--accent); color:#fff}
+  .btn.p:hover{background:#173d5f}
+  .btn.d{color:var(--risk); border-color:#eccfc9}
+  .btn.d:hover{background:var(--riskbg)}
+  .btn.sm{padding:3px 9px; font-size:12px}
+  .bar{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+
+  .note{border-left:3px solid var(--accent); background:var(--accent2); padding:10px 14px;
+        border-radius:0 4px 4px 0; font-size:12.5px; color:var(--ink2); margin:12px 0}
+  .note.r{border-left-color:var(--risk); background:var(--riskbg); color:#7d2a20}
+  .note.w{border-left-color:var(--warn); background:var(--warnbg); color:#6d4a05}
+  .note.g{border-left-color:var(--ok); background:var(--okbg); color:#155f3f}
+  .note b{color:inherit}
+
+  .tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:0; flex-wrap:wrap}
+  .tabs button{padding:9px 16px; border:none; background:none; cursor:pointer; font-family:inherit;
+     font-size:13px; color:var(--ink3); border-bottom:2px solid transparent; margin-bottom:-1px}
+  .tabs button.on{color:var(--accent); border-bottom-color:var(--accent); font-weight:600}
+  .tabs button:hover{color:var(--ink)}
+  .pane{display:none; padding-top:16px}
+  .pane.on{display:block}
+
+  .chk{display:flex; gap:9px; align-items:flex-start; padding:9px 0; border-bottom:1px dashed var(--line2)}
+  .chk input{margin-top:3px; flex:0 0 auto; width:15px; height:15px}
+  .chk .t{font-size:13px} .chk .d{font-size:12px; color:var(--ink3); margin-top:1px}
+
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px}
+  .muted{color:var(--ink3)}
+  .small{font-size:12px}
+  .right{text-align:right}
+  footer{color:var(--ink3); font-size:12px; border-top:1px solid var(--line); padding-top:16px; margin-top:28px}
+
+  @media print{
+    body{background:#fff; font-size:11.5px}
+    header{padding:0 0 10px} .card{break-inside:avoid; border-color:#bbb}
+    .btn,.tabs{display:none!important}
+    .pane{display:block!important; page-break-before:auto}
+    .wrap{max-width:none; padding:0}
+    input,select,textarea{border:none; border-bottom:1px solid #999; border-radius:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>12 周纸面执行台账</h1>
+    <div class="sub">
+      配套 <b>《投资策略规划 v1.6》</b>§8.2 ｜ 口径
+      <span class="mono">[75/25 ｜ 分段现金利率 ｜ 费5bp+滑点10bp ｜ T+1 ｜ q63 ｜ carry 计入]</span>
+    </div>
+    <div style="margin-top:8px">
+      <span class="tag g">数据只存在本机浏览器</span>
+      <span class="tag">不联网</span>
+      <span class="tag">可直接打印</span>
+      <span class="tag w">纸面执行，不涉及真实下单</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 0. 设置 ============ -->
+<div class="card">
+  <div class="card-h"><h2>〇 参数设定</h2><span class="hint">填一次，之后自动带入</span></div>
+  <div class="card-b">
+    <div class="grid g4">
+      <div>
+        <label class="f">可接受最大回撤 R</label>
+        <select id="cfgR">
+          <option value="0.15">15%</option>
+          <option value="0.20" selected>20%</option>
+          <option value="0.25">25%</option>
+          <option value="0.30">30%</option>
+        </select>
+      </div>
+      <div>
+        <label class="f">目标权益敞口 E（由 R 查表，不改）</label>
+        <input type="text" id="cfgE" readonly>
+      </div>
+      <div>
+        <label class="f">起始资金（元）</label>
+        <input type="number" id="cfgCap" value="500000" step="1000">
+      </div>
+      <div>
+        <label class="f">纸面执行起始日</label>
+        <input type="date" id="cfgStart">
+      </div>
+    </div>
+
+    <div class="note" id="cfgNote"></div>
+
+    <details style="margin-top:6px">
+      <summary style="cursor:pointer; font-size:12.5px; color:var(--accent)">执行工具三元组登记（护栏 ④，每次成交须核对）</summary>
+      <div class="grid g4" style="margin-top:12px">
+        <div><label class="f">沪深300 基金代码</label><input type="text" id="codeH" placeholder="如 510300"></div>
+        <div><label class="f">其跟踪指数代码</label><input type="text" id="idxH" placeholder="000300.SH"></div>
+        <div><label class="f">红利 基金代码</label><input type="text" id="codeD" placeholder="如 515080"></div>
+        <div><label class="f">其跟踪指数代码</label><input type="text" id="idxD" placeholder="000922.SH"></div>
+      </div>
+      <div class="note r" style="margin-top:12px">
+        <b>标的口径陷阱：</b>510880 跟踪的是<b>上证红利 000015.SH</b>，不是本方案的<b>中证红利 000922.SH</b>。
+        按「红利 ETF」字面选品会买错标的。每次成交登记必须写全「基金代码 + 跟踪指数代码 + 快照日」。
+        另：中证红利场内 ETF 最早成立于 <b>2019-11-26</b>，此前无对应工具。
+      </div>
+    </details>
+  </div>
+</div>
+
+<!-- ============ 1. 当前状态 ============ -->
+<div class="card">
+  <div class="card-h"><h2>① 当前状态</h2><span class="hint">按最新一条周度记录计算</span></div>
+  <div class="card-b">
+    <div class="kpi">
+      <div class="item"><div class="k">账户总资产</div><div class="v quant" id="kNav">—</div></div>
+      <div class="item"><div class="k">历史高水位</div><div class="v sm quant" id="kPeak">—</div></div>
+      <div class="item"><div class="k">当前回撤（相对高水位）</div><div class="v quant" id="kDd">—</div></div>
+      <div class="item"><div class="k">距 R 还有</div><div class="v sm quant" id="kRoom">—</div></div>
+      <div class="item"><div class="k">权益占比 / 目标</div><div class="v sm quant" id="kEq">—</div></div>
+      <div class="item"><div class="k">红利占权益（目标 25%）</div><div class="v sm quant" id="kDiv">—</div></div>
+    </div>
+    <div id="statusBox" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- ============ Tabs ============ -->
+<div class="tabs" id="tabs">
+  <button data-p="p-week" class="on">② 周度记录</button>
+  <button data-p="p-rebal">③ 季末再平衡</button>
+  <button data-p="p-review">④ 达 R 书面复核</button>
+  <button data-p="p-final">⑤ 12 周判定</button>
+</div>
+
+<!-- ---- 周度 ---- -->
+<div class="pane on" id="p-week">
+  <div class="card">
+    <div class="card-h">
+      <h2>周度记录</h2>
+      <span class="hint">每周记一次；三个市值数字从券商 App 直接抄</span>
+    </div>
+    <div class="card-b">
+      <div class="bar" style="margin-bottom:12px">
+        <button class="btn p" id="addRow">＋ 新增一周</button>
+        <button class="btn" id="add12">＋ 补齐到 12 周</button>
+        <button class="btn" id="expCsv">导出 CSV</button>
+        <button class="btn d" id="clearRows">清空记录</button>
+        <span class="small muted" id="rowHint"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="tblWeek">
+          <thead>
+            <tr>
+              <th style="width:112px">日期</th>
+              <th style="width:120px">沪深300 市值</th>
+              <th style="width:120px">红利 市值</th>
+              <th style="width:112px">现金</th>
+              <th style="width:88px">现金年利率%</th>
+              <th>总资产</th>
+              <th>回撤</th>
+              <th>权益占比</th>
+              <th>红利占权益</th>
+              <th style="width:74px">状态</th>
+              <th style="width:42px"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note" style="margin-top:14px">
+        <b>三个字段的定义必须一致，否则回撤会算错：</b>
+        ① 市值 = 券商显示的<b>持仓市值</b>（不是成本价）；② 现金 = <b>可用 + 在途</b>，但<b>在途资金不计入可再平衡现金</b>（护栏 ②）；
+        ③ 现金年利率填<b>实际到账利率</b>，连续两季低于 1.0% 须按实际重算 R 余量。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ---- 再平衡 ---- -->
+<div class="pane" id="p-rebal">
+  <div class="card">
+    <div class="card-h"><h2>季末再平衡计算</h2><span class="hint">按 75/25 重置份额，禁止同比例缩放</span></div>
+    <div class="card-b">
+      <div class="grid g3">
+        <div><label class="f">沪深300 成交价（元）</label><input type="number" id="pH" step="0.001" placeholder="如 3.850"></div>
+        <div><label class="f">红利 成交价（元）</label><input type="number" id="pD" step="0.001" placeholder="如 1.320"></div>
+        <div><label class="f">单边费率+滑点（bp）</label><input type="number" id="costBp" value="15" step="1"></div>
+      </div>
+      <div class="note w" style="margin-top:12px">
+        以<b>最新一条周度记录</b>的市值为准。若最新记录不是季末，请先补录季末日那一周。价格填<b>实际可成交价</b>（不是收盘价的估算）。
+      </div>
+      <div class="bar" style="margin:14px 0">
+        <button class="btn p" id="calcRebal">计算应买卖</button>
+        <button class="btn" id="saveRebal">记入台账</button>
+      </div>
+      <div id="rebalOut"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ---- 复核 ---- -->
+<div class="pane" id="p-review">
+  <div class="card">
+    <div class="card-h"><h2>达 R 书面复核</h2><span class="hint">第 5 条：只写下来，不改任何持仓</span></div>
+    <div class="card-b">
+      <div class="note r">
+        <b>这一页是本方案最容易被破坏的地方。</b>回撤达到 R 时，唯一被允许的动作是「把这四项写下来」。
+        <b>不改 E、不改份额、不改 75/25、不暂停季度再平衡。</b>若你在填这张表时产生了「应该减仓」的念头，
+        请把这句话本身写进「结论」栏——那是 12 周纸面执行最想抓到的数据。
+      </div>
+      <div class="bar" style="margin:14px 0">
+        <button class="btn p" id="newReview">＋ 新增一次复核</button>
+        <span class="small muted" id="reviewHint"></span>
+      </div>
+      <div id="reviewList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ---- 判定 ---- -->
+<div class="pane" id="p-final">
+  <div class="card">
+    <div class="card-h"><h2>12 周判定</h2><span class="hint">任一为「是」→ 不进入实盘</span></div>
+    <div class="card-b">
+      <div id="finalQs"></div>
+      <div class="grid g2" style="margin-top:16px">
+        <div><label class="f">纸面执行结论</label>
+          <select id="fVerdict">
+            <option value="">— 请选择 —</option>
+            <option value="pass">通过：可以进入小规模实盘</option>
+            <option value="hold">暂缓：需要再跑 12 周</option>
+            <option value="fail">不通过：方案与本人不匹配</option>
+          </select>
+        </div>
+        <div><label class="f">签字 / 日期</label><input type="text" id="fSign" placeholder="姓名 + 日期"></div>
+      </div>
+      <div style="margin-top:14px">
+        <label class="f">备注（写清楚哪一条让你犹豫）</label>
+        <textarea id="fNote" placeholder="例：第 7 周回撤到 11.2% 时我想把红利换成货币基金，最后没换，但想了三天。"></textarea>
+      </div>
+      <div id="finalOut" style="margin-top:16px"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div>本工具用于<b>纸面执行留痕</b>，不下单、不联网、不上传任何数据。数据保存在本机浏览器 localStorage，清除浏览器数据会丢失，请定期「导出 CSV」备份。</div>
+  <div style="margin-top:6px">配套文档：<span class="mono">投资策略规划_v1.6.md</span> §8.2 ｜ 本方案<b>没有任何尾部保护机制</b>，R 是资金安排的输入参数，不是回撤上限保证。</div>
+</footer>
+</div>
+
+<script>
+"use strict";
+var KEY = "v16_paper_ledger_v1";
+
+/* ---------- v1.6 R→E 表（写死，与策略文档 §〇 一致，不得在工具里改） ---------- */
+var R2E = {
+  0.15: { eq: 0.25, mdd: 12.173, room: 2.827, cagr: 3.079, vol: 5.153 },
+  0.20: { eq: 0.35, mdd: 17.234, room: 2.766, cagr: 3.327, vol: 7.212 },
+  0.25: { eq: 0.45, mdd: 22.102, room: 2.898, cagr: 3.527, vol: 9.273 },
+  0.30: { eq: 0.55, mdd: 26.792, room: 3.208, cagr: 3.677, vol: 11.341 }
+};
+
+/* ---------- 状态 ---------- */
+var S = {
+  cfg: { R: 0.20, cap: 500000, start: "", codeH: "", idxH: "", codeD: "", idxD: "" },
+  rows: [],
+  reviews: [],
+  rebal: [],
+  final: { answers: {}, verdict: "", sign: "", note: "" }
+};
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){
+      var o = JSON.parse(raw);
+      if(o && o.cfg){ S = Object.assign(S, o); }
+      S.cfg = Object.assign({ R:0.20, cap:500000, start:"", codeH:"", idxH:"", codeD:"", idxD:"" }, S.cfg || {});
+      S.rows = S.rows || []; S.reviews = S.reviews || []; S.rebal = S.rebal || [];
+      S.final = Object.assign({ answers:{}, verdict:"", sign:"", note:"" }, S.final || {});
+    }
+  }catch(e){ console.warn("读取失败，使用空台账", e); }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ console.warn("保存失败", e); }
+}
+
+/* ---------- 工具 ---------- */
+function yuan(x){
+  if(x == null || !isFinite(x)) return "—";
+  return "¥" + Math.round(x).toLocaleString("zh-CN");
+}
+function pct(x, d){
+  if(x == null || !isFinite(x)) return "—";
+  return (x * 100).toFixed(d == null ? 2 : d) + "%";
+}
+function num(v){ var n = parseFloat(v); return isFinite(n) ? n : 0; }
+function today(){
+  var d = new Date(), m = d.getMonth()+1, dd = d.getDate();
+  return d.getFullYear() + "-" + (m<10?"0":"") + m + "-" + (dd<10?"0":"") + dd;
+}
+function el(id){ return document.getElementById(id); }
+
+/* ---------- 计算单行 ---------- */
+/* 未填写的行返回 nav:null，避免「空行 = 全现金」被误读成真实状态。
+   判定标准：两条权益腿都为空即视为「本周还没填」，不看现金（现金有预填的月初值）。 */
+function calcRow(r){
+  var blank = function(v){ return v === "" || v == null || !isFinite(parseFloat(v)); };
+  if(blank(r.vH) && blank(r.vD)){
+    return { nav: null, eq: null, div: null,
+      cashRate: blank(r.rate) ? null : num(r.rate) / 100 };
+  }
+  var vH = num(r.vH), vD = num(r.vD), c = num(r.cash);
+  var nav = vH + vD + c;
+  var eq = vH + vD;
+  return {
+    nav: nav,
+    eq: nav > 0 ? eq / nav : null,
+    div: eq > 0 ? vD / eq : null,
+    cashRate: blank(r.rate) ? null : num(r.rate) / 100
+  };
+}
+
+/* 达 R 判定：必须带容差。
+   浮点陷阱：nav=400000 / peak=500000 时 dd = 0.19999999999999996，
+   直接写 dd >= 0.20 会漏判「正好触及 R」这个最关键的情形。 */
+function hitR(dd){
+  if(dd == null) return false;
+  return dd >= S.cfg.R - 1e-9;
+}
+
+/* ---------- 全序列：高水位与回撤 ---------- */
+function series(){
+  var peak = -Infinity, out = [];
+  for(var i=0;i<S.rows.length;i++){
+    var r = S.rows[i], c = calcRow(r);
+    if(c.nav == null){
+      out.push({ i:i, r:r, nav:null, eq:null, div:null, cashRate:c.cashRate,
+                 peak:(peak === -Infinity ? null : peak), dd:null });
+      continue;
+    }
+    if(c.nav > peak) peak = c.nav;
+    var dd = peak > 0 ? 1 - c.nav / peak : 0;
+    out.push({ i:i, r:r, nav:c.nav, eq:c.eq, div:c.div, cashRate:c.cashRate, peak:peak, dd:dd });
+  }
+  return out;
+}
+/* 最后一条「有数据」的记录 */
+function lastFilled(ser){
+  for(var i=ser.length-1;i>=0;i--){ if(ser[i].nav != null) return ser[i]; }
+  return null;
+}
+
+/* ---------- 渲染：设置 ---------- */
+function renderCfg(){
+  var m = R2E[S.cfg.R] || R2E[0.20];
+  el("cfgR").value = String(S.cfg.R);
+  el("cfgE").value = (m.eq * 100).toFixed(0) + "%";
+  el("cfgCap").value = S.cfg.cap;
+  el("cfgStart").value = S.cfg.start || "";
+  el("codeH").value = S.cfg.codeH || "";
+  el("idxH").value = S.cfg.idxH || "";
+  el("codeD").value = S.cfg.codeD || "";
+  el("idxD").value = S.cfg.idxD || "";
+
+  el("cfgNote").innerHTML =
+    "<b>R = " + (S.cfg.R*100).toFixed(0) + "% → E = " + (m.eq*100).toFixed(0) + "%</b>（v1.6 表，写死不改）。" +
+    "历史样本内 MDD <span class='quant'>" + m.mdd.toFixed(3) + "%</span>，余量 <span class='quant'>" + m.room.toFixed(3) + "pp</span>，" +
+    "年化 <span class='quant'>" + m.cagr.toFixed(3) + "%</span>，波动 <span class='quant'>" + m.vol.toFixed(3) + "%</span>。" +
+    "<br><b>这些是样本内关系，不外推未来。</b>在人工构造的长期慢熊下，本档回撤可达 R 的 " +
+    "<b>1.17~1.41 倍</b>（v1.6 §1.3）。<b>本方案没有任何尾部保护机制。</b>";
+}
+
+/* ---------- 渲染：状态 ---------- */
+function renderStatus(){
+  var ser = series();
+  var last = lastFilled(ser);
+  if(!last){
+    el("kNav").textContent = "—"; el("kPeak").textContent = "—";
+    el("kDd").textContent = "—"; el("kRoom").textContent = "—";
+    el("kEq").textContent = "—"; el("kDiv").textContent = "—";
+    el("statusBox").innerHTML = "<div class='note'>还没有填写任何一周的市值。点「② 周度记录」，在「沪深300 市值 / 红利 市值 / 现金」三栏填数即可。</div>";
+    return;
+  }
+  var m = R2E[S.cfg.R] || R2E[0.20];
+
+  el("kNav").textContent = yuan(last.nav);
+  el("kPeak").textContent = yuan(last.peak);
+  el("kDd").textContent = pct(last.dd);
+  el("kDd").className = "v quant " + (hitR(last.dd) ? "up" : "neu");
+
+  var room = S.cfg.R - last.dd;
+  el("kRoom").textContent = (room >= 0 ? "+" : "−") + Math.abs(room*100).toFixed(2) + "pp";
+  el("kRoom").className = "v sm quant " + (room < 0 ? "up" : (room < 0.03 ? "" : "down"));
+
+  el("kEq").textContent = pct(last.eq) + " / " + (m.eq*100).toFixed(0) + "%";
+  el("kDiv").textContent = pct(last.div);
+
+  var html = "";
+  if(hitR(last.dd)){
+    html += "<div class='note r'><b>回撤已达 R（" + pct(last.dd) + " ≥ " + (S.cfg.R*100).toFixed(0) + "%）。</b>" +
+      "按第 5 条：<b>不改 E、不改份额、不改 75/25、不暂停季度再平衡</b>，只做一次书面复核。" +
+      "请到「④ 达 R 书面复核」把它写下来。</div>";
+  }else if(room < 0.03){
+    html += "<div class='note w'>距 R 只剩 <b>" + (room*100).toFixed(2) + "pp</b>。这是最容易开始重新解释规则的位置。" +
+      "提前想清楚：如果真到了，你会做什么？</div>";
+  }else{
+    html += "<div class='note g'>距 R 尚有 <b>" + (room*100).toFixed(2) + "pp</b>。</div>";
+  }
+  if(last.eq != null){
+    var dev = last.eq - m.eq;
+    if(Math.abs(dev) > 0.05){
+      html += "<div class='note w'><b>权益占比偏离目标 " + (dev*100).toFixed(2) + "pp（超 ±5pp）。</b>" +
+        "按护栏 ①：暂停自动再平衡、人工核对份额与台账，不要凭感觉调整。</div>";
+    }
+  }
+  if(last.cashRate != null && last.cashRate < 0.01){
+    html += "<div class='note w'>现金到账利率 <b>" + (last.cashRate*100).toFixed(2) + "%</b> 低于 1.0%——" +
+      "若连续两季如此，按第 5 条复核第 ② 项重算 R 余量。</div>";
+  }
+  el("statusBox").innerHTML = html;
+}
+
+/* ---------- 渲染：周度表 ---------- */
+function renderWeek(){
+  var tb = el("tblWeek").querySelector("tbody");
+  var ser = series();
+  tb.innerHTML = "";
+  if(!S.rows.length){
+    tb.innerHTML = "<tr><td colspan='11' class='muted' style='text-align:center;padding:22px'>暂无记录，点上方「＋ 新增一周」开始</td></tr>";
+  }
+  for(var i=0;i<S.rows.length;i++){
+    var r = S.rows[i], s = ser[i];
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td><input type='date' value='" + (r.date||"") + "' data-i='" + i + "' data-k='date'></td>" +
+      "<td><input type='number' value='" + (r.vH===""?"":r.vH) + "' data-i='" + i + "' data-k='vH' step='100'></td>" +
+      "<td><input type='number' value='" + (r.vD===""?"":r.vD) + "' data-i='" + i + "' data-k='vD' step='100'></td>" +
+      "<td><input type='number' value='" + (r.cash===""?"":r.cash) + "' data-i='" + i + "' data-k='cash' step='100'></td>" +
+      "<td><input type='number' value='" + (r.rate===""?"":r.rate) + "' data-i='" + i + "' data-k='rate' step='0.1'></td>" +
+      "<td class='quant'>" + yuan(s.nav) + "</td>" +
+      "<td class='quant " + (s.dd >= S.cfg.R ? "up" : (s.dd>0?"":"down")) + "'>" + pct(s.dd) + "</td>" +
+      "<td class='quant'>" + pct(s.eq) + "</td>" +
+      "<td class='quant'>" + pct(s.div) + "</td>" +
+      "<td class='small'>" + (s.nav == null ? "<span class='tag'>未填</span>"
+        : (hitR(s.dd) ? "<span class='tag r'>达 R</span>"
+        : (s.eq!=null && Math.abs(s.eq-(R2E[S.cfg.R]||R2E[0.2]).eq)>0.05 ? "<span class='tag w'>偏离</span>"
+        : "<span class='tag g'>正常</span>"))) + "</td>" +
+      "<td><button class='btn d sm' data-del='" + i + "'>删</button></td>";
+    tb.appendChild(tr);
+  }
+  var n = S.rows.length;
+  el("rowHint").textContent = n ? ("已记录 " + n + " 周" + (n>=12 ? "（已达 12 周，可做判定）" : "，还需 " + (12-n) + " 周")) : "";
+}
+
+/* ---------- 渲染：再平衡 ---------- */
+var lastRebal = null;
+function calcRebal(){
+  var ser = series();
+  var last = lastFilled(ser);
+  if(!last){ el("rebalOut").innerHTML = "<div class='note r'>还没有填写任何一周的市值，无法计算。</div>"; return; }
+  var pH = num(el("pH").value), pD = num(el("pD").value);
+  if(!(pH>0) || !(pD>0)){ el("rebalOut").innerHTML = "<div class='note r'>请先填两个成交价。</div>"; return; }
+
+  var m = R2E[S.cfg.R] || R2E[0.20];
+  var E = m.eq, wD = 0.25, wH = 0.75;
+  var nav = last.nav;
+  var tgtEq = nav * E;
+  var tgtH = tgtEq * wH, tgtD = tgtEq * wD;
+  var curH = num(last.r.vH), curD = num(last.r.vD);
+  var sH = curH / pH, sD = curD / pD;
+  var tSH = tgtH / pH, tSD = tgtD / pD;
+  var dH = tgtH - curH, dD = tgtD - curD;
+  var traded = Math.abs(dH) + Math.abs(dD);
+  var cost = traded * num(el("costBp").value) / 10000;
+  var turnover = nav > 0 ? traded / nav : 0;
+
+  lastRebal = {
+    date: last.r.date || today(), nav: nav, pH: pH, pD: pD, E: E,
+    tgtH: tgtH, tgtD: tgtD, dH: dH, dD: dD, dSH: tSH - sH, dSD: tSD - sD,
+    cost: cost, turnover: turnover
+  };
+
+  var side = function(d){
+    if(Math.abs(d) < 1) return "<span class='tag g'>无需交易</span>";
+    return d > 0 ? "<span class='tag r'>买入</span>" : "<span class='tag g'>卖出</span>";
+  };
+
+  el("rebalOut").innerHTML =
+    "<table><thead><tr><th>腿</th><th>当前市值</th><th>目标市值</th><th>差额</th><th>当前份额</th><th>应买卖份额</th><th>方向</th></tr></thead><tbody>" +
+    "<tr><td>沪深300（目标 75%）</td><td class='quant'>" + yuan(curH) + "</td><td class='quant'>" + yuan(tgtH) +
+      "</td><td class='quant'>" + (dH>=0?"+":"") + yuan(Math.abs(dH)).replace("¥","¥") + (dH<0?"（卖）":"（买）") +
+      "</td><td class='quant'>" + sH.toFixed(2) + "</td><td class='quant'><b>" + (lastRebal.dSH>=0?"+":"") + lastRebal.dSH.toFixed(2) + "</b></td><td>" + side(dH) + "</td></tr>" +
+    "<tr><td>红利（目标 25%）</td><td class='quant'>" + yuan(curD) + "</td><td class='quant'>" + yuan(tgtD) +
+      "</td><td class='quant'>" + (dD>=0?"+":"") + yuan(Math.abs(dD)) + (dD<0?"（卖）":"（买）") +
+      "</td><td class='quant'>" + sD.toFixed(2) + "</td><td class='quant'><b>" + (lastRebal.dSD>=0?"+":"") + lastRebal.dSD.toFixed(2) + "</b></td><td>" + side(dD) + "</td></tr>" +
+    "</tbody><tfoot><tr><td>合计</td><td class='quant'>" + yuan(curH+curD) + "</td><td class='quant'>" + yuan(tgtEq) +
+      "</td><td class='quant'>" + yuan(traded) + "</td><td></td><td></td><td class='quant'>成本 " + yuan(cost) + "</td></tr></tfoot></table>" +
+    "<div class='note' style='margin-top:14px'>" +
+      "再平衡后现金 = <b>" + yuan(nav - tgtEq - cost) + "</b>（占 " + pct((nav-tgtEq-cost)/nav) + "），单边换手 " + pct(turnover) + "。" +
+      "<br><b>必须按 75/25 重置两个资产的份额，禁止「把两个资产同比例缩放」</b>——后者会让红利占比无声漂移（v1.5 曾漂到 31.27%）。" +
+    "</div>";
+}
+
+function saveRebal(){
+  if(!lastRebal){ el("rebalOut").innerHTML = "<div class='note r'>请先点「计算应买卖」。</div>"; return; }
+  S.rebal.push(Object.assign({}, lastRebal));
+  save();
+  el("rebalOut").insertAdjacentHTML("afterbegin",
+    "<div class='note g'>已记入台账（第 " + S.rebal.length + " 次再平衡）。</div>");
+}
+
+/* ---------- 渲染：复核 ---------- */
+var REVIEW_ITEMS = [
+  { k:"a", t:"R 与资金用途是否仍然匹配", d:"这笔钱是否还是 5 年以上不用？若用途变了，走第 6 条，不是改 E。" },
+  { k:"b", t:"现金到账利率是否连续两季低于 1.0%", d:"若是，按实际利率重算 R 余量（不是改 E）。" },
+  { k:"c", t:"执行工具口径是否一致", d:"场内/场外、基金代码、跟踪指数代码、快照日，四项逐一核对。" },
+  { k:"d", t:"台账与目标市值是否一致", d:"份额取整、同日双成交计费是否留痕。" }
+];
+
+function renderReviews(){
+  var box = el("reviewList");
+  el("reviewHint").textContent = S.reviews.length ? ("已记录 " + S.reviews.length + " 次") : "尚未发生复核";
+  if(!S.reviews.length){
+    box.innerHTML = "<div class='note'>还没有复核记录。" +
+      "<b>若 12 周内回撤从未达到 R，这一栏为空是正常的</b>——但请如实记下来，不要为了让台账「有用」而虚构。" +
+      "若达到了，必须写。</div>";
+    return;
+  }
+  box.innerHTML = S.reviews.map(function(v, i){
+    var items = REVIEW_ITEMS.map(function(it){
+      return "<div class='chk'><input type='checkbox' data-rv='" + i + "' data-item='" + it.k + "'" + (v.items && v.items[it.k] ? " checked" : "") + ">" +
+        "<div><div class='t'>" + it.t + "</div><div class='d'>" + it.d + "</div></div></div>";
+    }).join("");
+    return "<div class='card' style='margin-bottom:14px'><div class='card-h'><h2>复核 #" + (i+1) + "</h2>" +
+      "<span class='hint'>" + (v.date||"") + " ｜ 总资产 " + yuan(v.nav) + " ｜ 回撤 " + pct(v.dd) + "</span>" +
+      "<span style='margin-left:auto'><button class='btn d sm' data-delrv='" + i + "'>删除</button></span></div>" +
+      "<div class='card-b'>" + items +
+      "<div style='margin-top:14px'><label class='f'>复核结论（只用于下一次定期审阅，不在当期生效）</label>" +
+      "<textarea data-rvnote='" + i + "'>" + (v.conclusion||"") + "</textarea></div>" +
+      "<div style='margin-top:10px'><label class='f'>当时想做的动作（如实写，哪怕是「想减仓」）</label>" +
+      "<input type='text' data-rvurge='" + i + "' value='" + (v.urge||"").replace(/'/g,"&#39;") + "' placeholder='例：想把红利全部换成货币基金'></div>" +
+      "<div style='margin-top:10px'><label class='f'>签字 / 日期</label><input type='text' data-rvsign='" + i + "' value='" + (v.sign||"").replace(/'/g,"&#39;") + "' placeholder='姓名 + 日期'></div>" +
+      "</div></div>";
+  }).join("");
+}
+
+function newReview(){
+  var ser = series();
+  var last = lastFilled(ser);
+  S.reviews.push({
+    date: today(),
+    nav: last ? last.nav : null,
+    dd: last ? last.dd : null,
+    items: {}, conclusion: "", urge: "", sign: ""
+  });
+  save(); renderReviews();
+}
+
+/* ---------- 渲染：判定 ---------- */
+var FINAL_QS = [
+  "纸面执行期间，我是否在下跌中重新解释了规则（例如给自己找理由改 E、改比例、暂停再平衡）？",
+  "我是否产生过加仓或减仓的冲动，并差点执行？",
+  "我是否仍然觉得「这个方案有风控 / 有保护」？",
+  "我是否因为回撤而失眠、频繁看盘、或影响了正常工作生活？",
+  "若这是真金白银，我能否在同样的回撤下重复同样的动作？"
+];
+
+function renderFinal(){
+  el("finalQs").innerHTML = FINAL_QS.map(function(q, i){
+    var v = S.final.answers ? S.final.answers[i] : "";
+    return "<div class='chk'><div style='flex:1'><div class='t'>" + (i+1) + ". " + q + "</div>" +
+      "<div style='margin-top:6px'><select data-fq='" + i + "' style='max-width:200px'>" +
+      "<option value=''" + (v===""?" selected":"") + ">— 未回答 —</option>" +
+      "<option value='no'" + (v==="no"?" selected":"") + ">否</option>" +
+      "<option value='yes'" + (v==="yes"?" selected":"") + ">是</option>" +
+      "</select></div></div></div>";
+  }).join("");
+  el("fVerdict").value = S.final.verdict || "";
+  el("fSign").value = S.final.sign || "";
+  el("fNote").value = S.final.note || "";
+
+  var ans = S.final.answers || {};
+  var yes = Object.keys(ans).filter(function(k){ return ans[k] === "yes"; });
+  var unanswered = FINAL_QS.length - Object.keys(ans).filter(function(k){ return ans[k]; }).length;
+  var weeks = S.rows.length;
+  var out = "";
+  if(weeks < 12){
+    out += "<div class='note w'>目前只记录了 <b>" + weeks + "</b> 周，还差 " + (12-weeks) + " 周。</div>";
+  }
+  if(yes.length){
+    out += "<div class='note r'><b>有 " + yes.length + " 项回答「是」（第 " + yes.map(function(k){return (+k+1);}).join("、") + " 题）。</b>" +
+      "按 §8.2 判定标准，<b>不进入实盘</b>。这不算失败——它说明这套规则的执行成本对你不合适，而这正是纸面执行要发现的东西。</div>";
+  }else if(weeks >= 12 && unanswered === 0){
+    out += "<div class='note g'>12 周记录齐全、五问全部回答「否」。可以进入<b>小规模</b>实盘（建议首期不超过计划资金的 20%）。</div>";
+  }
+  el("finalOut").innerHTML = out;
+}
+
+/* ---------- 统一重绘 ---------- */
+function renderAll(){
+  renderCfg(); renderStatus(); renderWeek(); renderReviews(); renderFinal();
+}
+
+/* ---------- 事件 ---------- */
+document.addEventListener("change", function(e){
+  var t = e.target;
+
+  /* 设置 */
+  if(t.id === "cfgR"){
+    S.cfg.R = parseFloat(t.value); save(); renderAll(); return;
+  }
+  if(t.id === "cfgCap"){ S.cfg.cap = num(t.value); save(); return; }
+  if(t.id === "cfgStart"){ S.cfg.start = t.value; save(); return; }
+  if(t.id === "codeH"){ S.cfg.codeH = t.value; save(); return; }
+  if(t.id === "idxH"){ S.cfg.idxH = t.value; save(); return; }
+  if(t.id === "codeD"){ S.cfg.codeD = t.value; save(); return; }
+  if(t.id === "idxD"){ S.cfg.idxD = t.value; save(); return; }
+
+  /* 周度行 */
+  if(t.dataset && t.dataset.k){
+    var i = +t.dataset.i, k = t.dataset.k;
+    if(S.rows[i]){
+      S.rows[i][k] = (k === "date") ? t.value : (t.value === "" ? "" : num(t.value));
+      save(); renderStatus(); renderWeek();
+      /* 重绘会丢焦点，这里手动把焦点还给同一格 */
+      var again = document.querySelector("input[data-i='" + i + "'][data-k='" + k + "']");
+      if(again && k !== "date"){ again.focus(); try{ again.setSelectionRange(again.value.length, again.value.length);}catch(_){} }
+    }
+    return;
+  }
+
+  /* 复核 */
+  if(t.dataset && t.dataset.rv != null && t.dataset.item){
+    var ri = +t.dataset.rv, it = t.dataset.item;
+    S.reviews[ri].items = S.reviews[ri].items || {};
+    S.reviews[ri].items[it] = t.checked; save(); return;
+  }
+  if(t.dataset && t.dataset.rvnote != null){
+    S.reviews[+t.dataset.rvnote].conclusion = t.value; save(); return;
+  }
+  if(t.dataset && t.dataset.rvurge != null){
+    S.reviews[+t.dataset.rvurge].urge = t.value; save(); return;
+  }
+  if(t.dataset && t.dataset.rvsign != null){
+    S.reviews[+t.dataset.rvsign].sign = t.value; save(); return;
+  }
+
+  /* 判定 */
+  if(t.dataset && t.dataset.fq != null){
+    S.final.answers[t.dataset.fq] = t.value; save(); renderFinal(); return;
+  }
+  if(t.id === "fVerdict"){ S.final.verdict = t.value; save(); return; }
+  if(t.id === "fSign"){ S.final.sign = t.value; save(); return; }
+  if(t.id === "fNote"){ S.final.note = t.value; save(); return; }
+});
+
+/* textarea 用 input 事件更顺 */
+document.addEventListener("input", function(e){
+  var t = e.target;
+  if(t.dataset && t.dataset.rvnote != null){ S.reviews[+t.dataset.rvnote].conclusion = t.value; save(); }
+  if(t.dataset && t.dataset.rvurge != null){ S.reviews[+t.dataset.rvurge].urge = t.value; save(); }
+  if(t.dataset && t.dataset.rvsign != null){ S.reviews[+t.dataset.rvsign].sign = t.value; save(); }
+  if(t.id === "fNote"){ S.final.note = t.value; save(); }
+  if(t.id === "fSign"){ S.final.sign = t.value; save(); }
+});
+
+document.addEventListener("click", function(e){
+  var t = e.target;
+  if(t.id === "addRow"){
+    var last = S.rows.length ? S.rows[S.rows.length-1] : null;
+    S.rows.push({
+      date: last ? "" : (S.cfg.start || today()),
+      vH: last ? last.vH : "", vD: last ? last.vD : "",
+      cash: last ? last.cash : (S.cfg.cap * (1 - (R2E[S.cfg.R]||R2E[0.2]).eq)),
+      rate: last ? last.rate : 1.3
+    });
+    save(); renderAll(); return;
+  }
+  if(t.id === "add12"){
+    while(S.rows.length < 12){
+      var l = S.rows[S.rows.length-1];
+      S.rows.push({
+        date: "", vH: l ? l.vH : "", vD: l ? l.vD : "",
+        cash: l ? l.cash : S.cfg.cap * (1 - (R2E[S.cfg.R]||R2E[0.2]).eq),
+        rate: l ? l.rate : 1.3
+      });
+    }
+    save(); renderAll(); return;
+  }
+  if(t.id === "clearRows"){
+    if(confirm("清空全部周度记录？（复核与再平衡台账不受影响）")){ S.rows = []; save(); renderAll(); }
+    return;
+  }
+  if(t.id === "expCsv"){ exportCsv(); return; }
+  if(t.id === "calcRebal"){ calcRebal(); return; }
+  if(t.id === "saveRebal"){ saveRebal(); return; }
+  if(t.id === "newReview"){ newReview(); return; }
+  if(t.dataset && t.dataset.del != null){
+    S.rows.splice(+t.dataset.del, 1); save(); renderAll(); return;
+  }
+  if(t.dataset && t.dataset.delrv != null){
+    if(confirm("删除这次复核记录？")){ S.reviews.splice(+t.dataset.delrv, 1); save(); renderReviews(); }
+    return;
+  }
+  /* tabs */
+  if(t.parentNode && t.parentNode.id === "tabs"){
+    var p = t.dataset.p;
+    [].forEach.call(document.querySelectorAll("#tabs button"), function(b){ b.classList.toggle("on", b === t); });
+    [].forEach.call(document.querySelectorAll(".pane"), function(x){ x.classList.toggle("on", x.id === p); });
+    return;
+  }
+});
+
+/* ---------- CSV ---------- */
+function exportCsv(){
+  var ser = series();
+  var L = [];
+  L.push("周次,日期,沪深300市值,红利市值,现金,现金年利率%,总资产,历史高水位,回撤%,权益占比%,红利占权益%,是否达R");
+  ser.forEach(function(s, i){
+    var r = s.r;
+    L.push([
+      i+1, r.date || "",
+      num(r.vH).toFixed(2), num(r.vD).toFixed(2), num(r.cash).toFixed(2),
+      (r.rate === "" ? "" : num(r.rate)),
+      s.nav == null ? "" : s.nav.toFixed(2),
+      s.peak == null ? "" : s.peak.toFixed(2),
+      s.dd == null ? "" : (s.dd*100).toFixed(3),
+      (s.eq == null ? "" : (s.eq*100).toFixed(3)),
+      (s.div == null ? "" : (s.div*100).toFixed(3)),
+      s.dd == null ? "" : (hitR(s.dd) ? "是" : "否")
+    ].join(","));
+  });
+  L.push("");
+  L.push("参数,R,E,起始资金,起始日");
+  L.push(["", (S.cfg.R*100).toFixed(0)+"%", ((R2E[S.cfg.R]||R2E[0.2]).eq*100).toFixed(0)+"%", S.cfg.cap, S.cfg.start||""].join(","));
+  if(S.rebal.length){
+    L.push(""); L.push("再平衡台账,日期,总资产,沪深300目标,红利目标,沪深300应买卖份额,红利应买卖份额,成本");
+    S.rebal.forEach(function(b){
+      L.push(["", b.date, b.nav.toFixed(2), b.tgtH.toFixed(2), b.tgtD.toFixed(2),
+        b.dSH.toFixed(2), b.dSD.toFixed(2), b.cost.toFixed(2)].join(","));
+    });
+  }
+  if(S.reviews.length){
+    L.push(""); L.push("复核台账,日期,总资产,回撤%,a,b,c,d,结论,想做的动作,签字");
+    S.reviews.forEach(function(v){
+      var it = v.items || {};
+      L.push(["", v.date, v.nav==null?"":v.nav.toFixed(2), v.dd==null?"":(v.dd*100).toFixed(3),
+        it.a?"是":"否", it.b?"是":"否", it.c?"是":"否", it.d?"是":"否",
+        "\"" + (v.conclusion||"").replace(/"/g,"'") + "\"",
+        "\"" + (v.urge||"").replace(/"/g,"'") + "\"",
+        "\"" + (v.sign||"").replace(/"/g,"'") + "\""].join(","));
+    });
+  }
+  /* BOM 让 Excel 正确识别 UTF-8 */
+  var blob = new Blob(["\ufeff" + L.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "纸面执行台账_" + today() + ".csv";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+/* ---------- 初始化 ---------- */
+load();
+if(!S.cfg.start) S.cfg.start = today();
+if(!S.rows.length){
+  var e0 = (R2E[S.cfg.R] || R2E[0.2]).eq;
+  S.rows.push({ date: S.cfg.start, vH: "", vD: "", cash: S.cfg.cap * (1 - e0), rate: 1.3 });
+}
+renderAll();
+</script>
+</body>
+</html>
