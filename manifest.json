@@ -85,8 +85,8 @@
   }
  ],
  "git": {
-  "commit": "771d6400b6eebc32cdf3aa9bea8ab2c1ee15f78b",
-  "commitShort": "771d640",
+  "commit": "38f4c1776e6cf765ef04fe586ef4710a49e6087d",
+  "commitShort": "38f4c17",
   "branch": "main",
   "dirty": false,
   "dirtyFiles": [],
@@ -94,6 +94,6 @@
   "dirtyNote": "dirty 只看输入（代码/配置/文档/数据）；dirtyGenerated 是重跑闸门产生的时间戳差异，不影响可复现性"
  },
  "reproduce": "node run_all.js --full",
- "generatedAt": "2026-11-08T03:41:56.813Z",
+ "generatedAt": "2026-11-08T03:42:01.360Z",
  "honesty": "git.dirty=true 时本指纹只描述「工作区当前状态」，不是任何已发布版本。发布前必须 commit 后重跑。"
 }
