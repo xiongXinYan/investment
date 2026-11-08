@@ -24,6 +24,9 @@ bt_engine.js 是 v1.2 择时引擎，不参与 v1.6 的任何数字。
 | `src/phase6_stress_v16.js` | 压力路径补跑（先复现旧 36 单元再扩展） | v1.6 | `metrics_v16` | `data/derived/phase6_stress_v16.json` |
 | `src/metrics_v16.js` | **关键指标唯一数据源**：四档 R→E + 六种口径极差 + 撤销结论 | v1.6 | `test_report_consistency` | `data/derived/metrics_v16.json` |
 | `src/execution_simulator.js` | 实盘执行模拟：整手 100 份 / 最低 5 元佣金 / T+1 | v1.6 | — | 控制台 + 订单明细 |
+| `config/strategy/v1.6.json` | **策略参数登记**（分配 / 再平衡 / 成本 / 四档 R→E / 执行假设） | v1.6 | `config/verify_config.js` | 机器可读的「这一版到底是什么」 |
+| `src/manifest.js` | **回测指纹**：config / data / 引擎 / 产物 四组哈希 + git commit | v1.6 | — | `manifest.json` |
+| `lib/paths.js` | **目录登记表**：全部数据与报告的路径基准（LAYOUT） | — | 全部脚本 | 路径解析 |
 
 ## 二、质量闸门（改引擎前后必须各跑一次）
 
@@ -33,6 +36,8 @@ bt_engine.js 是 v1.2 择时引擎，不参与 v1.6 的任何数字。
 | `tests/test_regression.js` | 17 个用例的整条净值序列（容差 1e-9）+ 数据 sha256 | 说明引擎行为变了，必须解释为什么 |
 | `tests/test_report_consistency.js` | MD / HTML / README 是否与 `data/derived/metrics_v16.json` 逐位一致 + 有无已撤销措辞 | 说明有一份文档被单独改了 |
 | `tests/test_ledger_v16.js` | 纸面执行台账的计算逻辑（浮点边界、空行守卫） | 说明台账会算错数 |
+| `config/verify_config.js` | 配置登记与代码是否一致（34 项断言）；不一致说明有一份在说谎 | 说明配置已过期或代码已改 |
+| `src/manifest.js` | 生成回测指纹；数据哈希变化时提醒「这份报告不是用这份数据跑的」 | 说明输入已变，必须重新出数 |
 
 ## 三、历史引擎（保留，但**不是**当前入口）
 

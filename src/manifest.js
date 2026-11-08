@@ -80,7 +80,10 @@ addOut('regression_baseline.json');
 // ---------------------------------------------------------------------------
 const commit = git(['rev-parse', 'HEAD']);
 const dirtyRaw = git(['status', 'porcelain']);
-const dirtyFiles = dirtyRaw ? dirtyRaw.split('\n').filter(Boolean).map(l => l.slice(3)) : [];
+// manifest.json 自身不算「工作区不干净」：它是生成产物，写盘后必然显示为已修改。
+// 若把它计入，指纹会永远 dirty，dirty 标志就失去了判据作用。
+const dirtyFiles = dirtyRaw ? dirtyRaw.split('\n').filter(Boolean).map(l => l.slice(3))
+  .filter(f => f !== 'manifest.json') : [];
 
 const manifest = {
   schema: 'backtest-manifest/v1',

@@ -61,7 +61,7 @@
   {
    "file": "phase6_stress_v16.json",
    "bytes": 27357,
-   "sha256": "c63b2d65576d486c6509f51c27ae8b5c5f4a5f9cf54d74785a7b5b7d29db9567",
+   "sha256": "c67799ced97fd16061a88875a1e744c5436db1f5d98641dedbb957cca6417148",
    "contentHash": "73bd5ca9e74665ef35608924b7756d96f063384fa67eb47cdb16633dcfcd1bb4",
    "contentHashExclude": [
     "meta.generated"
@@ -71,7 +71,7 @@
   {
    "file": "metrics_v16.json",
    "bytes": 7501,
-   "sha256": "9b94c1cd445341ba5a0e751dd768bf464f58d3971da1d2912a33f5da76746e38",
+   "sha256": "2912b1b428bc2ad3137662d215f3878263ede9465fc66bef936b3160e88610c9",
    "contentHash": "07483450672dcf25cd92f6c4762c4cea275a4c28030d4bd572a9383c13755696",
    "contentHashExclude": [
     "meta.generatedAt"
@@ -85,17 +85,18 @@
   }
  ],
  "git": {
-  "commit": "a923bf5ef901487a7651481fb7890946c36f5c42",
-  "commitShort": "a923bf5",
+  "commit": "d9f65b3c75d0e1c95bfe3d8bd0cf2551a27a36cf",
+  "commitShort": "d9f65b3",
   "branch": "main",
   "dirty": true,
   "dirtyFiles": [
    "branch main",
-   "r branch is up to date with 'origin/main'.",
+   "r branch is ahead of 'origin/main' by 1 commit.",
+   "use \"git push\" to publish your local commits)",
    "hing to commit, working tree clean"
   ]
  },
  "reproduce": "node run_all.js --full",
- "generatedAt": "2026-11-08T03:21:43.514Z",
+ "generatedAt": "2026-11-08T03:22:09.182Z",
  "honesty": "git.dirty=true 时本指纹只描述「工作区当前状态」，不是任何已发布版本。发布前必须 commit 后重跑。"
 }
