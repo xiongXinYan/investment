@@ -79,7 +79,12 @@ addOut('regression_baseline.json');
 // 3. 组装
 // ---------------------------------------------------------------------------
 const commit = git(['rev-parse', 'HEAD']);
-const dirtyRaw = git(['status', 'porcelain']);
+// ★ 必须带 `--`。旧写法 ['status','porcelain'] 实际执行的是 `git status porcelain`，
+// Git 会把它当成 pathspec 并输出人类可读摘要（working tree clean），
+// 导致工作区明明是脏的，指纹却长期写 dirty:false。这是「可复现凭证」的根级失效。
+// core.quotepath=false：否则中文路径会被输出成 "\350\277..." 的八进制转义，
+// 人能看出「有改动」，但看不出改的是哪份文档。
+const dirtyRaw = git(['-c', 'core.quotepath=false', 'status', '--porcelain']);
 // 生成产物不算「工作区不干净」：它们每次跑闸门都会被重写（只差时间戳）。
 // 若计入，dirty 永远为 true，这个标志就失去了判据作用。
 // 真正要盯的是【输入】是否变了：代码、配置、文档、原始数据。
@@ -87,12 +92,15 @@ const GENERATED = new Set([
   'manifest.json', 'data_audit_report.json', 'data_manifest.json', 'metrics_v16.json',
   'phase5_backtest_data.json', 'phase6_stress_v16.json', 'regression_baseline.json'
 ]);
-// 只接受 porcelain 的「两字符状态 + 空格」行。本机 git 会额外输出
-//   ## main...origin/main [ahead 5] / Your branch is ahead of ... / nothing to commit ...
-// 这些人类可读行曾被当成 4 个脏文件名写进指纹（实际发生过），必须按格式过滤，
-// 而不是靠黑名单逐个排除。
+// 只接受 porcelain 的「两字符状态 + 空格」行。若格式变化或误用了人类可读输出，
+// 解析结果会为空——此时宁可失败，也不能把「解析不到」写成「工作区干净」。
 const dirtyAll = dirtyRaw ? dirtyRaw.split('\n')
   .filter(l => /^[ MADRCU?!]{2}\s/.test(l)).map(l => l.slice(3)) : [];
+if (dirtyRaw && dirtyRaw.trim() && dirtyAll.length === 0) {
+  console.error('✗ git status --porcelain 有输出但无法解析为文件状态，拒绝把未知状态写成 clean：');
+  console.error(dirtyRaw.slice(0, 200));
+  process.exit(1);
+}
 const dirtyFiles = dirtyAll.filter(f => !GENERATED.has(path.basename(f)));
 const dirtyGenerated = dirtyAll.filter(f => GENERATED.has(path.basename(f)));
 

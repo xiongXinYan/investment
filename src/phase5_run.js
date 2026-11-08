@@ -43,6 +43,10 @@ const CAL_Q_SET = new Set(B.CAL_Q);
 // 1. 绩效计算（met 复刻 bt_final.js:18-31，扩展 winRate；不改动引擎）
 // ---------------------------------------------------------------------------
 function met(nav) {
+  // 与 phase5_sensitivity.js / phase6_stress_v16.js 保持同一守卫：
+  // NaN 进入 MDD 循环会让 nav[i] > pk 恒为 false，静默返回 MDD=0 的假象值。
+  if (!Array.isArray(nav) || !nav.length || nav.some(v => !Number.isFinite(v)))
+    throw new Error('[Phase5 met] nav 为空或含非有限值，拒绝产出绩效数字');
   const y = nav.length / 252;
   const cagr = (nav[nav.length - 1] / nav[0]) ** (1 / y) - 1;
   let pk = nav[0], mdd = 0; const r = [];
@@ -89,7 +93,18 @@ const RC = (o = {}) => Object.assign({
 }, o);
 const OFF = (R = 0.20) => ({ enabled: false, R });    // C1/C2/(iv) 常数敞口
 const runCfg = (eq, rc, over = {}) => ENG.runRClause(Object.assign({}, over, { eq, rClause: rc }));
-const maxAbs = (a, b) => { let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i] - b[i])); return m; };
+const maxAbs = (a, b) => {
+  // 长度不等时旧实现只比较 a.length：短数组会被当成「尾部完全一致」，
+  // 从而让一条不完整的净值路径通过 V0 对齐。
+  if (a.length !== b.length) throw new Error('[Phase5 maxAbs] 序列长度不一致 ' + a.length + ' vs ' + b.length);
+  let m = 0;
+  for (let i = 0; i < a.length; i++) {
+    const d = Math.abs(a[i] - b[i]);
+    if (!Number.isFinite(d)) throw new Error('[Phase5 maxAbs] 第 ' + i + ' 项非有限值，拒绝静默比较');
+    m = Math.max(m, d);
+  }
+  return m;
+};
 
 // calQ 常数混合：复刻 mix 日循环，仅把再平衡时点集从 63 日取模换成绝对日历季末集合
 // （D2/D9：calQ 不随 S 平移、不做与 mix 的 V0 对齐断言；此处仅用于 C2 两套结果并列披露）

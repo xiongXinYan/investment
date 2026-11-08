@@ -9,9 +9,13 @@
 //   本文件把「提交前必须做的事」收成一条命令。
 //
 // 用法：
-//   node run_all.js            只跑闸门（快，约 20 秒）
-//   node run_all.js --full     闸门 + 重跑主回测 + 压力补跑 + 指标（慢，但完整）
+//   node run_all.js            只跑闸门（快，约 1 秒）
+//   node run_all.js --full     闸门 + 重跑主回测/敏感性/压力 + 重算后闭环校验
 //   node run_all.js --verbose  打印每道闸门的完整输出
+//
+// ★ --full 的顺序纪律 ★
+//   指标源与回测指纹必须在 phase5/phase6 重算【之后】再生成一次，否则会检查旧产物：
+//   「闸门全绿，但 metrics/manifest 还指向重算前的数据」。这是发布链路最隐蔽的脱钩。
 //
 // 退出码：全部通过 0，任一失败 1。
 // ============================================================================
@@ -32,6 +36,14 @@ const FULL = ARGS.includes('--full');
 const VERBOSE = ARGS.includes('--verbose');
 
 const t0 = Date.now();
+
+// 统一用本地时间显示。此前用 toISOString() 打出来的是 UTC，中国用户会看到
+// 13:22 的运行记录写成 05:22，和在 Windows 资源管理器里看到的文件时间对不上。
+function localStamp(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' +
+    p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
 
 function run(step) {
   const started = Date.now();
@@ -62,7 +74,7 @@ const GATES = [
   { label: '配置登记（config 与代码 34 项一致）', file: 'config/verify_config.js' },
   { label: '指标源生成（四档 R→E + 六种极差）', file: 'src/metrics_v16.js' },
   { label: '引擎不变量（46 项，含 T+1 / 无负现金）', file: 'tests/test_engine_invariants.js', args: ['--negative'] },
-  { label: '数据溯源（27 项，来源/口径/哈希三方一致）', file: 'tests/test_data_provenance.js' },
+  { label: '数据溯源（29 项，来源/口径/哈希三方一致）', file: 'tests/test_data_provenance.js' },
   { label: '报告一致性（MD / HTML / README）', file: 'tests/test_report_consistency.js' },
   { label: '回归基线（17 用例整条净值序列）', file: 'tests/test_regression.js' },
   { label: '台账逻辑（浮点边界 / 空行守卫）', file: 'tests/test_ledger_v16.js' },
@@ -78,6 +90,22 @@ const RECOMPUTE = [
   { label: '压力补跑 phase6_stress_v16.js', file: 'src/phase6_stress_v16.js', timeout: 600000 }
 ];
 
+// 重算后的闭环。只保留 data_audit 作为前置门，其余闸门都移到重算之后：
+//  1) 指标源读 phase5/phase6，指纹再读取指标源与全部产物；不重跑就会检查旧值。
+//  2) 如果先跑 metrics 再重算，一次合法的引擎升级会被「重算前旧产物」判失败，
+//     导致 --full 永远无法用来生成新基线。顺序本身也是正确性的一部分。
+const PRE_RECOMPUTE = [GATES[0]];
+const POST_RECOMPUTE = [
+  Object.assign({}, GATES[2], { label: '重算后指标源（防旧口径通过）' }),
+  GATES[1],
+  GATES[3],
+  GATES[4],
+  Object.assign({}, GATES[5], { label: '重算后报告一致性' }),
+  Object.assign({}, GATES[6], { label: '重算后回归基线' }),
+  GATES[7],
+  Object.assign({}, GATES[8], { label: '重算后回测指纹（最后写）' })
+];
+
 // 数据快照：跑完打印，便于与上一份报告对账
 function snapshot() {
   const files = ['manifest.json', 'metrics_v16.json', 'phase5_backtest_data.json', 'phase6_stress_v16.json', 'regression_baseline.json'];
@@ -85,16 +113,16 @@ function snapshot() {
     const fp = PT.resolve(f);
     if (!fs.existsSync(fp)) return { f, ok: false };
     const st = fs.statSync(fp);
-    return { f, ok: true, kb: (st.size / 1024).toFixed(0), at: new Date(st.mtime).toISOString().slice(0, 19).replace('T', ' ') };
+    return { f, ok: true, kb: (st.size / 1024).toFixed(0), at: localStamp(new Date(st.mtime)) };
   });
 }
 
 // ---------------------------------------------------------------------------
 console.log('');
-console.log('=== run_all  ' + (FULL ? '（完整：含重算）' : '（仅闸门）') + '  ' + new Date().toISOString().slice(0, 19).replace('T', ' ') + ' ===');
+console.log('=== run_all  ' + (FULL ? '（完整：含重算与闭环）' : '（仅闸门）') + '  ' + localStamp() + ' ===');
 console.log('');
 
-const steps = FULL ? GATES.concat(RECOMPUTE) : GATES;
+const steps = FULL ? PRE_RECOMPUTE.concat(RECOMPUTE, POST_RECOMPUTE) : GATES;
 const results = [];
 for (const s of steps) {
   const r = run(s);
@@ -104,12 +132,6 @@ for (const s of steps) {
     console.log('✗ 第一道闸门就失败了 —— 数据层有问题时不继续，避免用坏数据产出「看起来正常」的数字。');
     process.exit(1);
   }
-}
-
-// 完整模式下，重算完必须再跑一次一致性（引擎变了，文档必须仍对齐）
-if (FULL) {
-  const again = run({ label: '重算后再校验一致性', file: 'tests/test_report_consistency.js' });
-  results.push(Object.assign({ label: '重算后再校验一致性' }, again));
 }
 
 const fails = results.filter(r => !r.ok);

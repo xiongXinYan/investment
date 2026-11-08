@@ -304,7 +304,8 @@ const summary = {
 
 const out = {
   meta: {
-    generated: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    // 保留 ISO 的 Z 后缀：旧写法截掉时区后看起来像本地时间，实际是 UTC。
+    generated: new Date().toISOString(),
     author: '顾衡策（编排层）',
     purpose: '补跑 v1.6 新 R→E 表（25/35/45/55）在压力路径下的表现；修正「推荐 E 三档未被压力检验」的证据缺口',
     script: 'phase6_stress_v16.js',

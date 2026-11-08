@@ -24,7 +24,7 @@
    "phase6_stress_v16.js",
    "metrics_v16.js"
   ],
-  "hash": "70284e20f9896221906eed8647d06d030d7b433d0f8818cc2137584812d56cdc"
+  "hash": "a11205ab8f0af4db8429efd916e5d46035cd12b3d311f8b152b99b0f687ae510"
  },
  "data": {
   "files": [
@@ -60,8 +60,8 @@
   },
   {
    "file": "phase6_stress_v16.json",
-   "bytes": 27357,
-   "sha256": "dd2d4adda7eaa0da27c412c5472e788cf579cdbe1cf14e83bff672d34547c6ac",
+   "bytes": 27362,
+   "sha256": "a99a111ef7f2efe404d1a417decf89a3f34af7e0ba0973c3a5e233941918a1b0",
    "contentHash": "73bd5ca9e74665ef35608924b7756d96f063384fa67eb47cdb16633dcfcd1bb4",
    "contentHashExclude": [
     "meta.generated"
@@ -71,7 +71,7 @@
   {
    "file": "metrics_v16.json",
    "bytes": 7501,
-   "sha256": "a7bc6195c2ce227ebf1742053fef233209b25d937e3801aac879924936760671",
+   "sha256": "c4c7d3d0b3426ee47032e0ea7ebc7952867dcdf31db846c6542a8dfa28dea06b",
    "contentHash": "07483450672dcf25cd92f6c4762c4cea275a4c28030d4bd572a9383c13755696",
    "contentHashExclude": [
     "meta.generatedAt"
@@ -85,15 +85,30 @@
   }
  ],
  "git": {
-  "commit": "459b2f929454b5395c86a26661643e7afcc737f7",
-  "commitShort": "459b2f9",
+  "commit": "e8bb4882b5353a57901bb82ef6d8452fa9f0b3cd",
+  "commitShort": "e8bb488",
   "branch": "main",
-  "dirty": false,
-  "dirtyFiles": [],
-  "dirtyGenerated": [],
+  "dirty": true,
+  "dirtyFiles": [
+   "README.md",
+   "docs/engineering/迁移清单_v1.0.md",
+   "docs/methodology/ENGINES.md",
+   "package.json",
+   "run_all.js",
+   "src/manifest.js",
+   "src/phase5_run.js",
+   "src/phase6_stress_v16.js"
+  ],
+  "dirtyGenerated": [
+   "data/derived/data_audit_report.json",
+   "data/derived/data_manifest.json",
+   "data/derived/metrics_v16.json",
+   "data/derived/phase6_stress_v16.json",
+   "manifest.json"
+  ],
   "dirtyNote": "dirty 只看输入（代码/配置/文档/数据）；dirtyGenerated 是重跑闸门产生的时间戳差异，不影响可复现性"
  },
  "reproduce": "node run_all.js --full",
- "generatedAt": "2026-11-08T03:42:07.373Z",
+ "generatedAt": "2026-11-08T05:43:15.604Z",
  "honesty": "git.dirty=true 时本指纹只描述「工作区当前状态」，不是任何已发布版本。发布前必须 commit 后重跑。"
 }
