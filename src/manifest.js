@@ -90,7 +90,10 @@ const dirtyRaw = git(['-c', 'core.quotepath=false', 'status', '--porcelain']);
 // 真正要盯的是【输入】是否变了：代码、配置、文档、原始数据。
 const GENERATED = new Set([
   'manifest.json', 'data_audit_report.json', 'data_manifest.json', 'metrics_v16.json',
-  'phase5_backtest_data.json', 'phase6_stress_v16.json', 'regression_baseline.json'
+  'phase5_backtest_data.json', 'phase6_stress_v16.json', 'regression_baseline.json',
+  // 第三关的「视图」产物：每次 export 都会重写，但内容由 gate3_state.json 决定。
+  // 状态文件本身不在此列——它记录的是观测，改了就必须被看见。
+  'gate3_backup.json', '第三关_周记.md'
 ]);
 // 只接受 porcelain 的「两字符状态 + 空格」行。若格式变化或误用了人类可读输出，
 // 解析结果会为空——此时宁可失败，也不能把「解析不到」写成「工作区干净」。

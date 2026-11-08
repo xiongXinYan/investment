@@ -68,7 +68,7 @@ bt_engine.js 是 v1.2 择时引擎，不参与 v1.6 的任何数字。
 ## 五、`run_all.js` 怎么用
 
 ```bash
-node run_all.js            # 只跑九道闸门（快，约 1 秒）
+node run_all.js            # 只跑十道闸门（快，约 1.5 秒）
 node run_all.js --full     # 闸门 + 重算 + 重算后指标/一致性/回归/指纹闭环（视机器，数秒）
 node run_all.js --verbose  # 打印每道闸门的完整输出
 ```

@@ -78,6 +78,7 @@ const GATES = [
   { label: '报告一致性（MD / HTML / README）', file: 'tests/test_report_consistency.js' },
   { label: '回归基线（17 用例整条净值序列）', file: 'tests/test_regression.js' },
   { label: '台账逻辑（浮点边界 / 空行守卫）', file: 'tests/test_ledger_v16.js' },
+  { label: '第三关记录（建仓/周记/再平衡/导出）', file: 'tests/test_gate3.js' },
   { label: '回测指纹（config / data / 引擎 / 产物）', file: 'src/manifest.js' }
 ];
 
@@ -103,7 +104,8 @@ const POST_RECOMPUTE = [
   Object.assign({}, GATES[5], { label: '重算后报告一致性' }),
   Object.assign({}, GATES[6], { label: '重算后回归基线' }),
   GATES[7],
-  Object.assign({}, GATES[8], { label: '重算后回测指纹（最后写）' })
+  GATES[8],
+  Object.assign({}, GATES[9], { label: '重算后回测指纹（最后写）' })
 ];
 
 // 数据快照：跑完打印，便于与上一份报告对账

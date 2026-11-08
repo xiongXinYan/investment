@@ -672,6 +672,17 @@ function hitR(dd){
 /* 单一定义在 seriesOf(rows)（见「备份与恢复」段），此处只做绑定，
    避免导入预览与主视图各写一份回撤逻辑而不一致。 */
 function series(){ return seriesOf(S.rows); }
+
+/* 已完成的周数：只数「起始日（含）之后」的观测。
+   建仓基准日通常早于起始日（按起始日前最后一个交易日收盘价建仓），
+   它提供回撤的起点，但它本身不是「一周」。直接用 rows.length 会把
+   「基准 + 12 周 = 13 行」读成 13 周，让「已达 12 周，可做判定」提前一周出现——
+   而这一关的判定时点提前，等于把验证本身弄坏。 */
+function weeksDone(rows){
+  var st = S.cfg.start;
+  return (rows || []).filter(function(r){ return !st || (r && r.date && r.date >= st); }).length;
+}
+
 /* 最后一条「有数据」的记录 */
 function lastFilled(ser){
   for(var i=ser.length-1;i>=0;i--){ if(ser[i].nav != null) return ser[i]; }
@@ -776,7 +787,7 @@ function renderWeek(){
       "<td><button class='btn d sm' data-del='" + i + "'>删</button></td>";
     tb.appendChild(tr);
   }
-  var n = S.rows.length;
+  var n = weeksDone(S.rows);
   el("rowHint").textContent = n ? ("已记录 " + n + " 周" + (n>=12 ? "（已达 12 周，可做判定）" : "，还需 " + (12-n) + " 周")) : "";
 }
 
@@ -910,7 +921,7 @@ function renderFinal(){
   var ans = S.final.answers || {};
   var yes = Object.keys(ans).filter(function(k){ return ans[k] === "yes"; });
   var unanswered = FINAL_QS.length - Object.keys(ans).filter(function(k){ return ans[k]; }).length;
-  var weeks = S.rows.length;
+  var weeks = weeksDone(S.rows);
   var out = "";
   if(weeks < 12){
     out += "<div class='note w'>目前只记录了 <b>" + weeks + "</b> 周，还差 " + (12-weeks) + " 周。</div>";
