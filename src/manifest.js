@@ -80,10 +80,16 @@ addOut('regression_baseline.json');
 // ---------------------------------------------------------------------------
 const commit = git(['rev-parse', 'HEAD']);
 const dirtyRaw = git(['status', 'porcelain']);
-// manifest.json 自身不算「工作区不干净」：它是生成产物，写盘后必然显示为已修改。
-// 若把它计入，指纹会永远 dirty，dirty 标志就失去了判据作用。
-const dirtyFiles = dirtyRaw ? dirtyRaw.split('\n').filter(Boolean).map(l => l.slice(3))
-  .filter(f => f !== 'manifest.json') : [];
+// 生成产物不算「工作区不干净」：它们每次跑闸门都会被重写（只差时间戳）。
+// 若计入，dirty 永远为 true，这个标志就失去了判据作用。
+// 真正要盯的是【输入】是否变了：代码、配置、文档、原始数据。
+const GENERATED = new Set([
+  'manifest.json', 'data_audit_report.json', 'data_manifest.json', 'metrics_v16.json',
+  'phase5_backtest_data.json', 'phase6_stress_v16.json', 'regression_baseline.json'
+]);
+const dirtyAll = dirtyRaw ? dirtyRaw.split('\n').filter(Boolean).map(l => l.slice(3)) : [];
+const dirtyFiles = dirtyAll.filter(f => !GENERATED.has(path.basename(f)));
+const dirtyGenerated = dirtyAll.filter(f => GENERATED.has(path.basename(f)));
 
 const manifest = {
   schema: 'backtest-manifest/v1',
@@ -105,7 +111,9 @@ const manifest = {
     commitShort: commit ? commit.slice(0, 7) : null,
     branch: git(['rev-parse', '--abbrev-ref', 'HEAD']),
     dirty: dirtyFiles.length > 0,
-    dirtyFiles
+    dirtyFiles,
+    dirtyGenerated,
+    dirtyNote: 'dirty 只看输入（代码/配置/文档/数据）；dirtyGenerated 是重跑闸门产生的时间戳差异，不影响可复现性'
   },
   reproduce: 'node run_all.js --full',
   generatedAt: new Date().toISOString(),
