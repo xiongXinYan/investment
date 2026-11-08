@@ -1,6 +1,6 @@
 {
  "note": "数据快照清单。任何一份输入文件变动都会改变 sha256，回测结果必须重新出数。",
- "generatedAt": "2026-11-08T03:23:12.722Z",
+ "generatedAt": "2026-11-08T03:23:57.002Z",
  "verdict": "PASS_WITH_WARNINGS",
  "span": {
   "N": 4089,

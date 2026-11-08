@@ -61,7 +61,7 @@
   {
    "file": "phase6_stress_v16.json",
    "bytes": 27357,
-   "sha256": "c67799ced97fd16061a88875a1e744c5436db1f5d98641dedbb957cca6417148",
+   "sha256": "b81753b365c31f6a07a0bde4d44d7b38dbdc05cd0affab69bf2ebb0964393f6a",
    "contentHash": "73bd5ca9e74665ef35608924b7756d96f063384fa67eb47cdb16633dcfcd1bb4",
    "contentHashExclude": [
     "meta.generated"
@@ -71,7 +71,7 @@
   {
    "file": "metrics_v16.json",
    "bytes": 7501,
-   "sha256": "e5088b9fdbfd6780f0208fb1639115b4688d6d56e2a55d9c8ad53a86f29cf66f",
+   "sha256": "ee9eb193d53d9cbfb2152067e443a9344e95e8c9285d6910da4b0ac8583c16bc",
    "contentHash": "07483450672dcf25cd92f6c4762c4cea275a4c28030d4bd572a9383c13755696",
    "contentHashExclude": [
     "meta.generatedAt"
@@ -85,8 +85,8 @@
   }
  ],
  "git": {
-  "commit": "fdc0362c7ca05ab1c027f5f1c45383a7fb5e171f",
-  "commitShort": "fdc0362",
+  "commit": "f0f8c0ff783b7a0052003b894e3fc2a7fabaa5cd",
+  "commitShort": "f0f8c0f",
   "branch": "main",
   "dirty": false,
   "dirtyFiles": [],
@@ -94,6 +94,6 @@
   "dirtyNote": "dirty 只看输入（代码/配置/文档/数据）；dirtyGenerated 是重跑闸门产生的时间戳差异，不影响可复现性"
  },
  "reproduce": "node run_all.js --full",
- "generatedAt": "2026-11-08T03:23:13.450Z",
+ "generatedAt": "2026-11-08T03:23:57.677Z",
  "honesty": "git.dirty=true 时本指纹只描述「工作区当前状态」，不是任何已发布版本。发布前必须 commit 后重跑。"
 }
