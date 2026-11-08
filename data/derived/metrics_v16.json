@@ -2,7 +2,7 @@
  "meta": {
   "strategyVersion": "v1.6",
   "generatedBy": "metrics_v16.js",
-  "generatedAt": "2026-11-08T13:14:49.000Z",
+  "generatedAt": "2026-11-08T13:17:52.505Z",
   "note": "本文件是 v1.6 关键指标的唯一数据源。Markdown 与 HTML 报告均由 test_report_consistency.js 校验与本文件一致，禁止任一方单独手改数字。",
   "tradingDaysPerYear": 242.847,
   "calendarYears": 16.838,
